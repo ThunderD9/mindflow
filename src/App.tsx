@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Task, DiaryEntry, WeeklyGoal, AppSettings, ActiveTab, AiChatMessage } from './types';
+import { cn, getEffectiveDate } from './lib/utils';
+import { Task, DiaryEntry, WeeklyGoal, AppSettings, ActiveTab, AiChatMessage, WeekDay } from './types';
 import { LocalStorageService } from './services/storage';
 import { GeminiService } from './services/geminiService';
 import { TopNav } from './components/TopNav';
@@ -22,6 +22,14 @@ export const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [initialAiPrompt, setInitialAiPrompt] = useState<string>('');
+  const [viewDate, setViewDate] = useState<Date>(new Date());
+  
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayShort = format(new Date(), 'EEE') as WeekDay;
+  const todaysTaskCount = tasks.filter((t) => {
+    const effectiveDate = getEffectiveDate(t);
+    return effectiveDate === todayStr && (t.status === 'todo' || t.status === 'in_progress');
+  }).length;
   
   const [chatMessages, setChatMessages] = useState<AiChatMessage[]>(() => {
     const saved = LocalStorageService.getAiChatHistory();
@@ -270,7 +278,7 @@ export const App: React.FC = () => {
           setInitialAiPrompt('');
           setIsCopilotOpen(true);
         }}
-        taskCount={tasks.filter((t) => t.status !== 'completed').length}
+        taskCount={todaysTaskCount}
         diaryCount={diaryEntries.length}
         currentModel={settings.model || 'gemini-3.6-flash'}
       />
@@ -284,6 +292,8 @@ export const App: React.FC = () => {
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onOpenAiWithPrompt={handleOpenAiWithPrompt}
+            viewDate={viewDate}
+            setViewDate={setViewDate}
           />
         )}
 
@@ -294,6 +304,8 @@ export const App: React.FC = () => {
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onOpenAiWithPrompt={handleOpenAiWithPrompt}
+            viewDate={viewDate}
+            setViewDate={setViewDate}
           />
         )}
 
@@ -318,6 +330,8 @@ export const App: React.FC = () => {
             onUpdateGoal={handleUpdateGoal}
             onDeleteGoal={handleDeleteGoal}
             onOpenAiWithPrompt={handleOpenAiWithPrompt}
+            viewDate={viewDate}
+            setViewDate={setViewDate}
           />
         )}
 

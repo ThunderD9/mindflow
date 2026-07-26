@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Key, Eye, EyeOff, CheckCircle2, AlertTriangle, ExternalLink, ShieldCheck, Cpu, Wand2, Download, Upload, X } from 'lucide-react';
+import { Key, Eye, EyeOff, CheckCircle2, AlertTriangle, ExternalLink, ShieldCheck, Cpu, Wand2, Download, Upload, X, Globe } from 'lucide-react';
 import { AppSettings } from '../types';
 import { GeminiService } from '../services/geminiService';
 import { LocalStorageService } from '../services/storage';
@@ -242,6 +242,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span>Restore Backup</span>
                 <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
               </label>
+            </div>
+          </div>
+
+          {/* Time & Region Settings */}
+          <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+            <span className="text-xs font-medium text-zinc-200 block">
+              Time & Region
+            </span>
+            <div className="bg-zinc-900/40 border border-zinc-800 p-3 rounded-lg flex items-center justify-between text-xs text-zinc-300">
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-zinc-200 flex items-center gap-1.5">
+                  <Globe className="size-3.5 text-zinc-400" aria-hidden="true" />
+                  System Timezone
+                </span>
+                <span className="text-[11px] text-zinc-500">
+                  Automatically synced with your device clock.
+                </span>
+              </div>
+              <div className="px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-zinc-400 font-mono tracking-tight">
+                {Intl.DateTimeFormat().resolvedOptions().timeZone}
+              </div>
             </div>
           </div>
 

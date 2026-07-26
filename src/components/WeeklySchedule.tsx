@@ -8,14 +8,19 @@ import {
   Trash2Icon,
   TargetIcon,
   ChevronRightIcon,
+  XCircleIcon,
+  XIcon,
+  ChevronLeftIcon,
   CheckIcon
 } from 'lucide-react';
+import { format, addWeeks, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { Task, Goal, WeekDay } from '../types';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, getEffectiveDate } from '@/lib/utils';
 
 interface WeeklyScheduleProps {
   tasks: Task[];
@@ -27,6 +32,8 @@ interface WeeklyScheduleProps {
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
   onOpenAiWithPrompt?: (prompt: string) => void;
+  viewDate?: Date;
+  setViewDate?: (date: Date) => void;
 }
 
 export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
@@ -39,17 +46,16 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
   onUpdateTask,
   onDeleteTask,
   onOpenAiWithPrompt,
+  viewDate = new Date(),
+  setViewDate,
 }) => {
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('By End of Week');
   
   // Quick Add Task State
-  const [quickAddDay, setQuickAddDay] = useState<WeekDay | null>(null);
+  const [quickAddDayStr, setQuickAddDayStr] = useState<string | null>(null);
   const [quickAddTitle, setQuickAddTitle] = useState('');
   const [quickAddTime, setQuickAddTime] = useState('09:00 AM');
-
-  const weekdays: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const currentDayShort = new Date().toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3) as WeekDay;
 
   const handleAddGoalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,48 +218,63 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
           <h2 className="text-xl font-bold text-zinc-100 tracking-tight font-heading">
             <span>Operational Schedule</span>
           </h2>
-          <span className="text-xs font-mono text-zinc-400">Current Today: <strong className="text-zinc-200 font-bold">{currentDayShort}</strong></span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setViewDate && setViewDate(addWeeks(viewDate, -1))}
+              className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              <ChevronLeftIcon className="size-3.5" />
+            </button>
+            <span className="text-xs font-medium font-sans text-zinc-400 min-w-[100px] text-center select-none">
+              Week of {format(startOfWeek(viewDate, { weekStartsOn: 1 }), 'MMM d')}
+            </span>
+            <button
+              onClick={() => setViewDate && setViewDate(addWeeks(viewDate, 1))}
+              className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              <ChevronRightIcon className="size-3.5" />
+            </button>
+          </div>
         </div>
 
         {(() => {
-          const currentDayIndex = weekdays.indexOf(currentDayShort);
-          const tomorrowDayShort = weekdays[(currentDayIndex + 1) % 7];
-          const upcomingDays = weekdays.filter(d => d !== currentDayShort && d !== tomorrowDayShort);
+          const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
+          const scheduleDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
           
           // Helper to render a day card based on size
-          const renderDayCard = (day: WeekDay, isToday: boolean, size: 'lg' | 'sm') => {
-            const dayTasks = tasks.filter(t => (t.scheduledDay === day) || (!t.scheduledDay && day === 'Mon'));
+          const renderDayCard = (dayDate: Date, size: 'lg' | 'sm') => {
+            const dayStr = format(dayDate, 'yyyy-MM-dd');
+            const dayShort = format(dayDate, 'EEE') as WeekDay;
+            const isActualToday = isToday(dayDate);
             const isLg = size === 'lg';
+
+            const dayTasks = tasks.filter(t => getEffectiveDate(t) === dayStr);
 
             return (
               <Card 
-                key={day} 
+                key={dayStr} 
                 className={cn(
                   'rounded-3xl border transition-all duration-300 overflow-hidden flex flex-col',
                   isLg ? 'h-[400px] shadow-md' : 'h-[320px] shadow-sm',
-                  isToday ? 'bg-zinc-950/80 border-indigo-500/20 ring-1 ring-indigo-500/20' : 'bg-zinc-950/40 border-zinc-800/50 hover:border-zinc-700/80 hover:bg-zinc-950/60'
+                  isActualToday ? 'bg-zinc-950/80 border-indigo-500/20 ring-1 ring-indigo-500/20' : 'bg-zinc-950/40 border-zinc-800/50 hover:border-zinc-700/80 hover:bg-zinc-950/60'
                 )}
               >
                 {/* Day Column Header */}
                 <div className={cn(
                   'p-4 pb-3 flex items-center justify-between shrink-0 select-none border-b border-zinc-800/30',
-                  isToday ? 'bg-indigo-500/5' : 'bg-transparent'
+                  isActualToday ? 'bg-indigo-500/5' : 'bg-transparent'
                 )}>
                   <div className="flex items-center gap-2">
-                    <span className={cn("font-bold tracking-tight text-zinc-100 font-heading", isLg ? "text-xl" : "text-base")}>{day}</span>
-                    {isToday && (
+                    <span className={cn("font-bold tracking-tight text-zinc-100 font-heading", isLg ? "text-xl" : "text-base")}>{dayShort}</span>
+                    <span className="text-xs font-mono text-zinc-500">{format(dayDate, 'd')}</span>
+                    {isActualToday && (
                       <span className="text-[10px] font-mono uppercase font-bold bg-indigo-500 text-white px-2 py-0.5 rounded-full shadow-sm">
                         Today
                       </span>
                     )}
-                    {day === tomorrowDayShort && (
-                      <span className="text-[10px] font-mono uppercase font-semibold bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
-                        Tomorrow
-                      </span>
-                    )}
                   </div>
                   <Badge variant="outline" className="text-[10px] font-mono font-bold bg-zinc-900/50 border-zinc-800/80 text-zinc-400 px-2 py-0 rounded-full">
-                    {dayTasks.length}
+                    {dayTasks.filter(t => t.status === 'todo' || t.status === 'in_progress').length}
                   </Badge>
                 </div>
 
@@ -269,13 +290,14 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                   ) : (
                     dayTasks.map((t) => {
                       const isCompleted = t.status === 'completed';
+                      const isFailed = t.status === 'failed';
 
                       return (
                         <div 
                           key={t.id} 
                           className={cn(
                             'p-2.5 rounded-xl transition-all duration-150 group/item relative font-sans flex items-start gap-3',
-                            isCompleted ? 'opacity-50' : 'hover:bg-zinc-900/50'
+                            (isCompleted || isFailed) ? 'opacity-50' : 'hover:bg-zinc-900/50'
                           )}
                         >
                           <button
@@ -283,11 +305,11 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                             onClick={() => onUpdateTask(t.id, { status: isCompleted ? 'todo' : 'completed' })}
                             className="shrink-0 pt-0.5 text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none"
                           >
-                            {isCompleted ? <CheckCircle2Icon className="size-4 text-emerald-500" /> : <CircleIcon className="size-4 text-zinc-600 hover:text-zinc-400" />}
+                            {isCompleted ? <CheckCircle2Icon className="size-4 text-emerald-500" /> : isFailed ? <XCircleIcon className="size-4 text-rose-500" /> : <CircleIcon className="size-4 text-zinc-600 hover:text-zinc-400" />}
                           </button>
                           
                           <div className="min-w-0 flex-1">
-                            <p className={cn('font-medium leading-snug tracking-tight text-sm', isCompleted ? 'line-through text-zinc-500 font-normal' : 'text-zinc-200')}>
+                            <p className={cn('font-medium leading-snug tracking-tight text-sm', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : 'text-zinc-200')}>
                               {t.title}
                             </p>
 
@@ -298,14 +320,24 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                             )}
                           </div>
 
-                          <button
-                            type="button"
-                            title="Delete task"
-                            onClick={() => onDeleteTask(t.id)}
-                            className="opacity-0 group-hover/item:opacity-100 text-zinc-500 hover:text-rose-400 p-1 rounded-md transition-opacity bg-zinc-800/80 shrink-0"
-                          >
-                            <Trash2Icon className="size-3" />
-                          </button>
+                          <div className="opacity-0 group-hover/item:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+                            <button
+                              type="button"
+                              title="Mark as Skipped / Cancelled"
+                              onClick={() => onUpdateTask(t.id, { status: isFailed ? 'todo' : 'failed' })}
+                              className="text-zinc-500 hover:text-rose-400 p-1 rounded-md bg-zinc-800/80 transition-colors"
+                            >
+                              <XIcon className="size-3" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete task"
+                              onClick={() => onDeleteTask(t.id)}
+                              className="text-zinc-500 hover:text-rose-400 p-1 rounded-md bg-zinc-800/80 transition-colors"
+                            >
+                              <Trash2Icon className="size-3" />
+                            </button>
+                          </div>
                         </div>
                       );
                     })
@@ -314,7 +346,7 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
 
                 {/* Quick Add Footer */}
                 <div className="p-2 border-t border-zinc-800/30 bg-zinc-950 shrink-0">
-                  {quickAddDay === day ? (
+                  {quickAddDayStr === dayStr ? (
                     <form 
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -325,13 +357,14 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                             category: 'Work',
                             priority: 'medium',
                             status: 'todo',
-                            scheduledDay: day,
+                            scheduledDay: dayShort,
+                            date: dayStr,
                             time: quickAddTime || '09:00 AM',
                             attachments: [],
                           });
                           setQuickAddTitle('');
                           setQuickAddTime('09:00 AM');
-                          setQuickAddDay(null);
+                          setQuickAddDayStr(null);
                         }
                       }}
                       className="flex flex-col gap-2"
@@ -354,7 +387,7 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                           <Button type="submit" disabled={!quickAddTitle.trim()} size="sm" variant="ghost" className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 transition-colors shrink-0">
                             <CheckIcon className="size-4" />
                           </Button>
-                          <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-zinc-500 hover:text-zinc-300 transition-colors shrink-0" onClick={() => setQuickAddDay(null)}>
+                          <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-zinc-500 hover:text-zinc-300 transition-colors shrink-0" onClick={() => setQuickAddDayStr(null)}>
                             ✕
                           </Button>
                         </div>
@@ -366,7 +399,7 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setQuickAddDay(day);
+                        setQuickAddDayStr(dayStr);
                         setQuickAddTitle('');
                         setQuickAddTime('09:00 AM');
                       }}
@@ -383,15 +416,15 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
 
           return (
             <div className="space-y-10">
-              {/* Focus: Today & Tomorrow */}
+              {/* Focus: Monday & Tuesday */}
               <div>
                 <h3 className="text-sm font-semibold text-zinc-400 font-heading mb-4 px-1 flex items-center gap-2">
                   <SparklesIcon className="size-4 text-zinc-500" />
-                  <span>Immediate Priorities</span>
+                  <span>Early Week</span>
                 </h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {renderDayCard(currentDayShort, true, 'lg')}
-                  {renderDayCard(tomorrowDayShort, false, 'lg')}
+                  {renderDayCard(scheduleDates[0], 'lg')}
+                  {renderDayCard(scheduleDates[1], 'lg')}
                 </div>
               </div>
               
@@ -399,10 +432,10 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
               <div>
                 <h3 className="text-sm font-semibold text-zinc-400 font-heading mb-4 px-1 flex items-center gap-2">
                   <CalendarIcon className="size-4 text-zinc-500" />
-                  <span>Upcoming Schedule</span>
+                  <span>Remaining Days</span>
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                  {upcomingDays.map(day => renderDayCard(day, false, 'sm'))}
+                  {scheduleDates.slice(2).map(dayDate => renderDayCard(dayDate, 'sm'))}
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
-export type TaskStatus = 'todo' | 'in_progress' | 'completed';
+export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'failed';
 export type TaskCategory = 'Work' | 'Personal' | 'Health' | 'Learning' | 'Ideas' | 'General';
 export type WeekDay = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
@@ -20,6 +20,7 @@ export interface Task {
   priority: Priority;
   status: TaskStatus;
   dueDate?: string; // YYYY-MM-DD
+  date?: string; // Explicit YYYY-MM-DD for scheduling
   scheduledDay?: WeekDay | null; // Monday - Sunday for weekly planner
   time?: string; // e.g., "09:00 AM" or "14:30"
   durationHours?: number; // For hourly time-blocking timeline

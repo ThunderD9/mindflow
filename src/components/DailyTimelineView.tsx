@@ -9,8 +9,13 @@ import {
   PaperclipIcon,
   SunIcon,
   MoonIcon,
-  Edit2Icon
+  Edit2Icon,
+  XCircleIcon,
+  XIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from 'lucide-react';
+import { format, addDays, isToday, startOfWeek, isSameDay } from 'date-fns';
 import { Task, WeekDay } from '../types';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -18,7 +23,8 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { MediaAttachments } from './MediaAttachments';
 import { TimePicker } from './TimePicker';
-import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn, getEffectiveDate } from '@/lib/utils';
 
 interface DailyTimelineViewProps {
   tasks: Task[];
@@ -26,6 +32,8 @@ interface DailyTimelineViewProps {
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
   onOpenAiWithPrompt?: (prompt: string) => void;
+  viewDate: Date;
+  setViewDate: (date: Date) => void;
 }
 
 const HOURS_24 = Array.from({ length: 24 }, (_, i) => {
@@ -42,11 +50,12 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
   onUpdateTask,
   onDeleteTask,
   onOpenAiWithPrompt,
+  viewDate,
+  setViewDate
 }) => {
   const [showFull24Hours, setShowFull24Hours] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<WeekDay>(() => {
-    return new Date().toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3) as WeekDay;
-  });
+  const selectedDay = format(viewDate, 'EEE') as WeekDay;
+  const selectedDateStr = format(viewDate, 'yyyy-MM-dd');
 
   const [creatingForHour, setCreatingForHour] = useState<number | null>(null);
   const [customTimeInput, setCustomTimeInput] = useState<string>('');
@@ -59,11 +68,10 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
   const [dragOverHour, setDragOverHour] = useState<number | null>(null);
 
   const currentHour = new Date().getHours();
-  const currentDayShort = new Date().toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3) as WeekDay;
-  const isViewingToday = selectedDay === currentDayShort;
+  const isViewingToday = isToday(viewDate);
 
   const displayedHours = showFull24Hours ? HOURS_24 : HOURS_24.filter(h => h.isWorkingHour);
-  const dayTasks = tasks.filter(t => !t.scheduledDay || t.scheduledDay === selectedDay);
+  const dayTasks = tasks.filter(t => getEffectiveDate(t) === selectedDateStr);
 
   const getTasksForHour = (hourNum: number) => {
     return dayTasks.filter((t) => {
@@ -75,7 +83,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
       const pattern0 = `${String(displayHour).padStart(2, '0')}:`;
       const pattern1 = `${displayHour}:`;
       
-      return (clean.includes(pattern0) || clean.includes(pattern1)) && clean.includes(ampm);
+      return (clean.startsWith(pattern0) || clean.startsWith(pattern1)) && clean.includes(ampm);
     });
   };
 
@@ -102,6 +110,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
       priority: 'medium',
       status: 'todo',
       scheduledDay: selectedDay,
+      date: selectedDateStr,
       time: customTimeInput || formatHourTo12h(hourNum),
       durationHours: 1,
       attachments: [],
@@ -118,10 +127,18 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl text-zinc-100 flex items-center gap-2.5 font-heading">
             <ClockIcon className="size-6 text-zinc-300" aria-hidden="true" />
-            <span>Daily Time-Blocking Timeline</span>
-            <Badge variant="outline" className="text-xs font-mono font-semibold bg-zinc-900 text-zinc-200 border-zinc-800 px-3 py-1 rounded-md">
-              {selectedDay}
-            </Badge>
+            <span>Daily Timeline</span>
+            <div className="flex items-center ml-3 gap-1">
+              <button onClick={() => setViewDate(addDays(viewDate, -1))} className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors">
+                <ChevronLeftIcon className="size-3.5" />
+              </button>
+              <span className="text-xs font-medium font-sans text-zinc-400 min-w-[80px] text-center select-none">
+                {isViewingToday ? 'Today' : format(viewDate, 'MMM d')}
+              </span>
+              <button onClick={() => setViewDate(addDays(viewDate, 1))} className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors">
+                <ChevronRightIcon className="size-3.5" />
+              </button>
+            </div>
           </h1>
           <p className="text-sm text-zinc-400 mt-1.5 leading-normal font-sans">
             Clean 1-hour time slices with customizable start times and sub-intervals inside any hour block.
@@ -158,43 +175,63 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
       </div>
 
       {/* Weekday Selector Bar */}
-      <Card className="bg-zinc-900/40 border-zinc-800 p-2 rounded-2xl shadow-xs font-sans overflow-x-auto">
+      <Card className="bg-zinc-900/40 border-zinc-800 p-2 rounded-2xl shadow-xs font-sans overflow-x-auto mt-4">
         <div className="flex items-center justify-between min-w-[580px] gap-1.5">
-          {(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as WeekDay[]).map((day) => {
-            const count = tasks.filter(t => (t.scheduledDay === day || (!t.scheduledDay && day === 'Mon')) && t.status !== 'completed').length;
-            const isActive = selectedDay === day;
-            const isToday = currentDayShort === day;
+          {(() => {
+            const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
+            const scheduleDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-            return (
-              <button
-                key={day}
-                type="button"
-                onClick={() => {
-                  setSelectedDay(day);
-                  setCreatingForHour(null);
-                }}
-                className={cn(
-                  'flex-1 py-2.5 px-3.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2.5 select-none font-sans whitespace-nowrap',
-                  isActive 
-                    ? 'bg-zinc-100 text-zinc-950 font-bold shadow-sm' 
-                    : isToday 
-                    ? 'border border-zinc-700 text-zinc-200 font-semibold bg-zinc-900/80' 
-                    : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
-                )}
-              >
-                <span>{day}</span>
-                {isToday && !isActive && <span className="text-xs font-mono px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-300">Today</span>}
-                {count > 0 && (
-                  <span className={cn(
-                    'text-xs font-mono tabular-nums px-2 py-0.5 rounded-full font-semibold',
-                    isActive ? 'bg-zinc-900 text-zinc-200' : 'bg-zinc-800 text-zinc-400'
-                  )}>
-                    {count}
+            return scheduleDates.map((dayDate) => {
+              const dayStr = format(dayDate, 'yyyy-MM-dd');
+              const dayShort = format(dayDate, 'EEE') as WeekDay;
+              
+              const count = tasks.filter(t => {
+                return getEffectiveDate(t) === dayStr && (t.status === 'todo' || t.status === 'in_progress');
+              }).length;
+              
+              const isActive = isSameDay(viewDate, dayDate);
+              const isActualToday = isToday(dayDate);
+
+              return (
+                <button
+                  key={dayStr}
+                  type="button"
+                  onClick={() => {
+                    setViewDate(dayDate);
+                    setCreatingForHour(null);
+                  }}
+                  className={cn(
+                    'flex-1 py-2 px-3.5 rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center gap-0 select-none font-sans whitespace-nowrap',
+                    isActive 
+                      ? 'bg-zinc-100 text-zinc-950 font-bold shadow-sm' 
+                      : isActualToday 
+                      ? 'border border-zinc-700 text-zinc-200 font-semibold bg-zinc-900/80' 
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 leading-tight">
+                    {dayShort}
+                    {isActualToday && (
+                      <span className={cn("text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded shadow-sm leading-none", isActive ? "bg-zinc-950 text-white" : "bg-indigo-500 text-white")}>
+                        Today
+                      </span>
+                    )}
+                    {count > 0 && (
+                      <span className={cn(
+                        "text-[10px] py-0.5 px-1.5 rounded-full font-mono font-bold leading-none",
+                        isActive ? "bg-zinc-950/10 text-zinc-900" : "bg-zinc-800 text-zinc-300"
+                      )}>
+                        {count}
+                      </span>
+                    )}
                   </span>
-                )}
-              </button>
-            );
-          })}
+                  <span className={cn("text-[10px] font-mono", isActive ? "text-zinc-600" : "text-zinc-500")}>
+                    {format(dayDate, 'MMM d')}
+                  </span>
+                </button>
+              );
+            });
+          })()}
         </div>
       </Card>
 
@@ -310,6 +347,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                 {/* Stack of Scheduled Tasks in this Hour (Smooth rounded-xl cards with standard 14px font) */}
                 {hourTasks.map((task) => {
                   const isCompleted = task.status === 'completed';
+                  const isFailed = task.status === 'failed';
                   const isExpanded = expandedTaskId === task.id;
 
                   return (
@@ -321,7 +359,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                       }}
                       className={cn(
                         'bg-zinc-950/90 border transition-all duration-200 p-2.5 rounded-lg shadow-xs font-sans hover:shadow-sm cursor-grab active:cursor-grabbing', 
-                        isCompleted ? 'border-zinc-900 opacity-60' : 'border-zinc-800 hover:border-zinc-700'
+                        (isCompleted || isFailed) ? 'border-zinc-900 opacity-60' : 'border-zinc-800 hover:border-zinc-700'
                       )}
                     >
                       <div onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="flex items-center justify-between gap-3.5 cursor-pointer select-none">
@@ -334,7 +372,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                             }}
                             className="shrink-0 text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none"
                           >
-                            {isCompleted ? <CheckCircle2Icon className="size-5 text-emerald-500" /> : <CircleIcon className="size-5 text-zinc-500 hover:text-zinc-300" />}
+                            {isCompleted ? <CheckCircle2Icon className="size-5 text-emerald-500" /> : isFailed ? <XCircleIcon className="size-5 text-rose-500" /> : <CircleIcon className="size-5 text-zinc-500 hover:text-zinc-300" />}
                           </button>
 
                           <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap" onClick={(e) => {
@@ -361,7 +399,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                                 className="h-7 px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
                               />
                             ) : (
-                              <span className={cn('text-sm font-semibold truncate tracking-tight', isCompleted ? 'line-through text-zinc-500 font-normal' : 'text-zinc-100')}>
+                              <span className={cn('text-sm font-semibold truncate tracking-tight', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : 'text-zinc-100')}>
                                 {task.title}
                               </span>
                             )}
@@ -397,6 +435,18 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                             className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md transition-colors"
                           >
                             <Edit2Icon className="size-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Mark as not completed"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
+                            }}
+                            className="text-zinc-500 hover:text-rose-400 p-1 rounded-md transition-colors"
+                          >
+                            <XIcon className="size-4" />
                           </button>
 
                           <button
