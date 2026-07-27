@@ -1,5 +1,11 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import contextMenu from 'electron-context-menu';
+
+contextMenu({
+  showSearchWithGoogle: false,
+  showInspectElement: true
+});
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -10,10 +16,11 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'MindFlow - Diary, Tasks & Gemini AI Copilot',
+    icon: path.join(__dirname, '../public/icon.png'),
     backgroundColor: '#090d16',
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },

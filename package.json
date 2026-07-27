@@ -3,13 +3,29 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "electron:dev": "vite",
-    "electron:build": "tsc && vite build"
+    "electron:build": "tsc && vite build && tsc -p tsconfig.electron.json",
+    "electron:pack": "npm run electron:build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.mindflow.app",
+    "productName": "Mindflow",
+    "directories": {
+      "output": "dist-electron-bin"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.png"
+    }
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -41,6 +57,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
+    "electron-context-menu": "^4.1.2",
     "framer-motion": "^11.11.11",
     "lucide-react": "^0.454.0",
     "radix-ui": "^1.6.7",
@@ -58,7 +75,9 @@
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
     "electron": "^33.2.0",
+    "electron-builder": "^26.15.3",
     "postcss": "^8.4.47",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
