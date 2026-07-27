@@ -1,7 +1,26 @@
-# Mindflow OS
+<div align="center">
+  <img src="./public/icon.png" width="100" alt="Mindflow Icon" />
+  <h1>MindFlow OS</h1>
+  <p>A sleek, offline-first personal diary and task manager desktop application featuring an autonomous AI Copilot and secure local data storage.</p>
+</div>
 
-A sleek, premium dark-mode web application for personal diary management, strategic goal alignment, and time-blocking. Designed meticulously following Shadcn UI principles for a beautiful, distraction-free experience.
+---
 
+## 📥 Download & Install
+
+You can download the standalone desktop application for your operating system below. These installers bundle everything you need—no coding knowledge required!
+
+- [**Download for Windows (.exe)**](https://github.com/ThunderD9/mindflow/releases/latest)
+- [**Download for macOS (.dmg)**](https://github.com/ThunderD9/mindflow/releases/latest)
+- [**Download for Linux (.AppImage)**](https://github.com/ThunderD9/mindflow/releases/latest)
+
+> [!WARNING]
+> **Security Warnings during Installation**
+> Because this is a free, open-source application without expensive corporate developer certificates, your operating system might initially block it.
+> - **Windows (SmartScreen):** If your screen turns blue saying "Windows protected your PC", simply click **"More info"** and then **"Run anyway"**.
+> - **Mac (Gatekeeper):** If Mac says the app is from an unidentified developer, go to your Applications folder, hold the `Control` key, **Right-Click** the app, and select **"Open"**.
+
+---
 ## Features & Interface
 
 ### 1. Weekly Schedule & Strategic Goals
