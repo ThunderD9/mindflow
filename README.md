@@ -14,6 +14,8 @@ You can download the standalone desktop application for your operating system be
 - [**Download for macOS (.dmg)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.0.0-arm64.dmg)
 - [**Download for Linux (.AppImage)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.0.0.AppImage)
 
+Alternatively, you can [**view the Releases page**](https://github.com/ThunderD9/mindflow/releases) to see all available versions and source code.
+
 > [!WARNING]
 > **Security Warnings during Installation**
 > Because this is a free, open-source application without expensive corporate developer certificates, your operating system might initially block it.
