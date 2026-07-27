@@ -7,7 +7,7 @@ async function convertIcon() {
     const outputPath = path.resolve('public/icon.png');
     
     await sharp(inputPath)
-      .resize(256, 256)
+      .resize(512, 512)
       .png()
       .toFile(outputPath);
       
