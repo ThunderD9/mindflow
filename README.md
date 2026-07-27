@@ -1,7 +1,8 @@
 <div align="center">
   <img src="./public/icon.png" width="100" alt="Mindflow Icon" />
   <h1>MindFlow OS</h1>
-  <p>A sleek, offline-first personal diary and task manager desktop application featuring an autonomous AI Copilot and secure local data storage.</p>
+  <p>A sleek, offline-first personal diary and task manager desktop application featuring an optional autonomous AI Copilot and secure local data storage.</p>
+  <p><strong>Completely Free & Open-Source | 100% Private | Zero Telemetry | BYOK (Bring Your Own Key)</strong></p>
 </div>
 
 ---
