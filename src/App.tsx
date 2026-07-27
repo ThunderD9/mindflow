@@ -38,7 +38,7 @@ export const App: React.FC = () => {
       {
         id: 'welcome-founder-1',
         sender: 'assistant',
-        text: "Welcome to MindFlow OS! I am your autonomous Founder AI Copilot powered by Google Gemini. Map out your daily timeline, schedule tasks, or attach files and reference links to anything. What are we building today?",
+        text: "Welcome to MindFlow OS! I am your autonomous Founder AI Copilot. Map out your daily timeline, schedule tasks, or attach files and reference links to anything. What are we building today?",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }
     ];

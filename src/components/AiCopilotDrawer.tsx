@@ -131,7 +131,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="size-4 text-zinc-300 shrink-0" aria-hidden="true" />
               <SheetTitle className="text-sm font-semibold text-zinc-100 font-sans">
-                Gemini Assistant
+                AI Assistant
               </SheetTitle>
             </div>
 
