@@ -1,5 +1,5 @@
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
-export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'failed';
+export type TaskStatus = 'todo' | 'in_progress' | 'half_completed' | 'completed' | 'failed';
 export type TaskCategory = 'Work' | 'Personal' | 'Health' | 'Learning' | 'Ideas' | 'General';
 export type WeekDay = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
