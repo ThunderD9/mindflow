@@ -13,7 +13,8 @@ import {
   XCircleIcon,
   XIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  MinusCircleIcon
 } from 'lucide-react';
 import { format, addDays, isToday, startOfWeek, isSameDay } from 'date-fns';
 import { Task, WeekDay } from '../types';
@@ -348,18 +349,19 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                 {hourTasks.map((task) => {
                   const isCompleted = task.status === 'completed';
                   const isFailed = task.status === 'failed';
+                  const isHalfCompleted = task.status === 'half_completed';
                   const isExpanded = expandedTaskId === task.id;
 
                   return (
                     <Card 
                       key={task.id} 
-                      draggable
+                      draggable={true}
                       onDragStart={(e) => {
                         e.dataTransfer.setData('taskId', task.id);
                       }}
                       className={cn(
                         'bg-zinc-950/90 border transition-all duration-200 p-2.5 rounded-lg shadow-xs font-sans hover:shadow-sm cursor-grab active:cursor-grabbing', 
-                        (isCompleted || isFailed) ? 'border-zinc-900 opacity-60' : 'border-zinc-800 hover:border-zinc-700'
+                        isCompleted ? 'border-zinc-900 opacity-60' : isFailed ? 'border-rose-900/50 opacity-60' : isHalfCompleted ? 'border-yellow-900/50' : 'border-zinc-800 hover:border-zinc-700'
                       )}
                     >
                       <div onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="flex items-center justify-between gap-3.5 cursor-pointer select-none">
@@ -372,7 +374,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                             }}
                             className="shrink-0 text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none"
                           >
-                            {isCompleted ? <CheckCircle2Icon className="size-5 text-emerald-500" /> : isFailed ? <XCircleIcon className="size-5 text-rose-500" /> : <CircleIcon className="size-5 text-zinc-500 hover:text-zinc-300" />}
+                            {isCompleted ? <CheckCircle2Icon className="size-5 text-emerald-500" /> : isFailed ? <XCircleIcon className="size-5 text-rose-500" /> : isHalfCompleted ? <MinusCircleIcon className="size-5 text-yellow-500" /> : <CircleIcon className="size-5 text-zinc-500 hover:text-zinc-300" />}
                           </button>
 
                           <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap" onClick={(e) => {
@@ -381,6 +383,8 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                             {editingTaskId === task.id ? (
                               <input
                                 autoFocus
+                                draggable={true}
+                                onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                 value={editTitleBuffer}
                                 onChange={(e) => setEditTitleBuffer(e.target.value)}
                                 onKeyDown={(e) => {
@@ -396,10 +400,10 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                                   onUpdateTask(task.id, { title: editTitleBuffer });
                                   setEditingTaskId(null);
                                 }}
-                                className="h-7 px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                                className="h-8 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
                               />
                             ) : (
-                              <span className={cn('text-sm font-semibold truncate tracking-tight', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : 'text-zinc-100')}>
+                              <span className={cn('text-sm font-semibold truncate tracking-tight', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100')}>
                                 {task.title}
                               </span>
                             )}
@@ -408,6 +412,21 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                               <Badge variant="outline" className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-zinc-900 border-zinc-800 text-indigo-300">
                                 {task.time}
                               </Badge>
+                            )}
+                            
+                            {editingTaskId !== task.id && (
+                              <button
+                                type="button"
+                                title="Edit task title"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditTitleBuffer(task.title);
+                                  setEditingTaskId(task.id);
+                                }}
+                                className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md transition-colors ml-1"
+                              >
+                                <Edit2Icon className="size-3.5" />
+                              </button>
                             )}
                           </div>
                         </div>
@@ -426,15 +445,14 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
 
                           <button
                             type="button"
-                            title="Edit task title"
+                            title="Mark as half completed"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditTitleBuffer(task.title);
-                              setEditingTaskId(task.id);
+                              onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
                             }}
-                            className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md transition-colors"
+                            className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400")}
                           >
-                            <Edit2Icon className="size-4" />
+                            <MinusCircleIcon className="size-4" />
                           </button>
 
                           <button
@@ -444,7 +462,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                               e.stopPropagation();
                               onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
                             }}
-                            className="text-zinc-500 hover:text-rose-400 p-1 rounded-md transition-colors"
+                            className={cn("p-1 rounded-md transition-colors", isFailed ? "text-rose-500 hover:text-rose-400" : "text-zinc-500 hover:text-rose-400")}
                           >
                             <XIcon className="size-4" />
                           </button>
@@ -470,6 +488,8 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                             <label className="text-xs font-mono text-zinc-400 block font-medium">Execution Specs & Notes</label>
                             <textarea
                               rows={3}
+                              draggable={true}
+                              onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
                               value={task.description || ''}
                               onChange={(e) => onUpdateTask(task.id, { description: e.target.value })}
                               placeholder="Add specific action criteria or notes for this block..."

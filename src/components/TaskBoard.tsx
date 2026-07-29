@@ -16,7 +16,8 @@ import {
   XCircleIcon,
   XIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  MinusCircleIcon
 } from 'lucide-react';
 import { format, addDays, startOfWeek, isToday, isSameDay, addWeeks, isSameMonth, isSameYear } from 'date-fns';
 import { Task, TaskCategory, Priority, WeekDay } from '../types';
@@ -55,7 +56,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory>('Work');
   const [selectedPriority, setSelectedPriority] = useState<Priority>('medium');
   const [selectedDateStr, setSelectedDateStr] = useState<string>('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'todo' | 'completed' | 'failed'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'todo' | 'completed' | 'failed' | 'half_completed'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [dateFilter, setDateFilter] = useState<string>('This Week');
   const [sortBy, setSortBy] = useState<SortOption>('priority');
@@ -100,6 +101,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
           if (activeFilter === 'todo' && (t.status === 'completed' || t.status === 'failed')) return false;
           if (activeFilter === 'completed' && t.status !== 'completed') return false;
           if (activeFilter === 'failed' && t.status !== 'failed') return false;
+          if (activeFilter === 'half_completed' && t.status !== 'half_completed') return false;
         }
         if (categoryFilter !== 'All' && t.category !== categoryFilter) return false;
         
@@ -447,7 +449,19 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                 : "text-zinc-400 hover:text-zinc-200"
             )}
           >
-            Skipped
+            Failed
+          </button>
+          
+          <button
+            onClick={() => setActiveFilter('half_completed')}
+            className={cn(
+              "inline-flex items-center justify-center whitespace-nowrap text-xs rounded-lg px-3 h-8 font-semibold transition-all outline-none",
+              activeFilter === 'half_completed' 
+                ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 shadow-sm" 
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            Half Done
           </button>
         </div>
 
@@ -500,6 +514,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
           {sortedAndFilteredTasks.map((task) => {
             const isCompleted = task.status === 'completed';
             const isFailed = task.status === 'failed';
+            const isHalfCompleted = task.status === 'half_completed';
             const isExpanded = expandedTaskId === task.id;
 
             return (
@@ -507,7 +522,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                 key={task.id} 
                 className={cn(
                   'bg-zinc-900/40 border transition-all duration-200 p-3 rounded-lg shadow-sm hover:shadow-md', 
-                  (isCompleted || isFailed) ? 'border-zinc-900 opacity-60' : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/60'
+                  isCompleted ? 'border-zinc-900 opacity-60' : isFailed ? 'border-rose-900/50 opacity-60' : isHalfCompleted ? 'border-yellow-900/50' : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/60'
                 )}
               >
                 <div onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="flex items-center justify-between gap-4 cursor-pointer select-none">
@@ -524,6 +539,8 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                         <CheckCircle2Icon className="size-5 text-emerald-500" />
                       ) : isFailed ? (
                         <XCircleIcon className="size-5 text-rose-500" />
+                      ) : isHalfCompleted ? (
+                        <MinusCircleIcon className="size-5 text-yellow-500" />
                       ) : (
                         <CircleIcon className="size-5 text-zinc-600 group-hover:text-zinc-400" />
                       )}
@@ -549,14 +566,29 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                             onUpdateTask(task.id, { title: editTitleBuffer });
                             setEditingTaskId(null);
                           }}
-                          className="h-7 px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                          className="h-8 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
                         />
                       ) : (
-                        <span className={cn('text-sm font-semibold truncate tracking-tight leading-none', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : 'text-zinc-100')}>
+                        <span className={cn('text-sm font-semibold truncate tracking-tight leading-none', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100')}>
                           {task.title}
                         </span>
                       )}
                       {getPriorityBadge(task.priority)}
+                      
+                      {editingTaskId !== task.id && (
+                        <button
+                          type="button"
+                          title="Edit task title"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditTitleBuffer(task.title);
+                            setEditingTaskId(task.id);
+                          }}
+                          className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md transition-colors ml-1"
+                        >
+                          <Edit2Icon className="size-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -578,15 +610,14 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                     
                     <button
                       type="button"
-                      title="Edit task title"
+                      title="Mark as half completed"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEditTitleBuffer(task.title);
-                        setEditingTaskId(task.id);
+                        onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
                       }}
-                      className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md transition-colors"
+                      className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400")}
                     >
-                      <Edit2Icon className="size-4" />
+                      <MinusCircleIcon className="size-4" />
                     </button>
 
                     <button

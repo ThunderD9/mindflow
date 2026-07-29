@@ -11,7 +11,8 @@ import {
   XCircleIcon,
   XIcon,
   ChevronLeftIcon,
-  CheckIcon
+  CheckIcon,
+  MinusCircleIcon
 } from 'lucide-react';
 import { format, addWeeks, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { Task, Goal, WeekDay } from '../types';
@@ -291,13 +292,14 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                     dayTasks.map((t) => {
                       const isCompleted = t.status === 'completed';
                       const isFailed = t.status === 'failed';
+                      const isHalfCompleted = t.status === 'half_completed';
 
                       return (
                         <div 
                           key={t.id} 
                           className={cn(
                             'p-2.5 rounded-xl transition-all duration-150 group/item relative font-sans flex items-start gap-3',
-                            (isCompleted || isFailed) ? 'opacity-50' : 'hover:bg-zinc-900/50'
+                            isCompleted ? 'opacity-50' : isFailed ? 'opacity-50 bg-rose-950/10' : isHalfCompleted ? 'bg-yellow-950/10' : 'hover:bg-zinc-900/50'
                           )}
                         >
                           <button
@@ -305,11 +307,11 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                             onClick={() => onUpdateTask(t.id, { status: isCompleted ? 'todo' : 'completed' })}
                             className="shrink-0 pt-0.5 text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none"
                           >
-                            {isCompleted ? <CheckCircle2Icon className="size-4 text-emerald-500" /> : isFailed ? <XCircleIcon className="size-4 text-rose-500" /> : <CircleIcon className="size-4 text-zinc-600 hover:text-zinc-400" />}
+                            {isCompleted ? <CheckCircle2Icon className="size-4 text-emerald-500" /> : isFailed ? <XCircleIcon className="size-4 text-rose-500" /> : isHalfCompleted ? <MinusCircleIcon className="size-4 text-yellow-500" /> : <CircleIcon className="size-4 text-zinc-600 hover:text-zinc-400" />}
                           </button>
                           
                           <div className="min-w-0 flex-1">
-                            <p className={cn('font-medium leading-snug tracking-tight text-sm', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : 'text-zinc-200')}>
+                            <p className={cn('font-medium leading-snug tracking-tight text-sm', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-200')}>
                               {t.title}
                             </p>
 
@@ -321,6 +323,14 @@ export const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({
                           </div>
 
                           <div className="opacity-0 group-hover/item:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+                            <button
+                              type="button"
+                              title="Mark as half completed"
+                              onClick={() => onUpdateTask(t.id, { status: isHalfCompleted ? 'todo' : 'half_completed' })}
+                              className="text-zinc-500 hover:text-yellow-400 p-1 rounded-md bg-zinc-800/80 transition-colors"
+                            >
+                              <MinusCircleIcon className="size-3" />
+                            </button>
                             <button
                               type="button"
                               title="Mark as Skipped / Cancelled"

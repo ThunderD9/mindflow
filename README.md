@@ -11,9 +11,9 @@
 
 You can download the standalone desktop application for your operating system below. These installers bundle everything you need—no coding knowledge required!
 
-- [**Download for Windows (.exe)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-Setup-1.0.0.exe)
-- [**Download for macOS (.dmg)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.0.0-arm64.dmg)
-- [**Download for Linux (.AppImage)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.0.0.AppImage)
+- [**Download for Windows (.exe)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-Setup-1.1.0.exe)
+- [**Download for macOS (.dmg)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.1.0-arm64.dmg)
+- [**Download for Linux (.AppImage)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.1.0.AppImage)
 
 Alternatively, you can [**view the Releases page**](https://github.com/ThunderD9/mindflow/releases) to see all available versions, or download the raw source code (`.zip` and `.tar.gz`).
 
