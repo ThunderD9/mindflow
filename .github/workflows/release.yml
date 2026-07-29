@@ -6,8 +6,21 @@ on:
       - 'v*' # Trigger on version tags (e.g., v1.0.0)
 
 jobs:
-  release:
+  create_release:
+    name: Create Unified Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+
+  build:
     name: Build & Release
+    needs: create_release
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -23,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           
       - name: Install dependencies
         run: npm ci
