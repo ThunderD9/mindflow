@@ -1,11 +1,13 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { autoUpdater } from 'electron-updater';
-import contextMenu from 'electron-context-menu';
 
-contextMenu({
-  showSearchWithGoogle: false,
-  showInspectElement: true
+// Initialize context menu (using dynamic import because electron-context-menu is pure ESM)
+import('electron-context-menu').then(({ default: contextMenu }) => {
+  contextMenu({
+    showSearchWithGoogle: false,
+    showInspectElement: true
+  });
 });
 
 let mainWindow: BrowserWindow | null = null;
