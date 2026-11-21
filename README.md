@@ -26,19 +26,15 @@ Alternatively, you can [**view the Releases page**](https://github.com/ThunderD9
 ---
 ## Features & Interface
 
-### 1. Weekly Schedule & Strategic Goals
-Oversee your complete 7-day operational schedule alongside core executive targets.
-![Weekly Planner](./weekly.png)
-
-### 2. Daily Time-Blocking Timeline
+### 1. Daily Time-Blocking Timeline
 Clean 1-hour time slices with customizable start times and sub-intervals inside any hour block.
 ![Daily Timeline](./timeline.png)
 
-### 3. Task Matrix
-Organized high-leverage action items with full priority and weekday sorting.
-![Task Matrix](./tasks.png)
+### 2. Tasks & Action
+Organized high-leverage action items with full priority, single-line dot badges, and weekday sorting.
+![Tasks & Action](./tasks.png)
 
-### 4. Notes & Diary
+### 3. Notes & Diary
 A rich-text Markdown editor for journaling, with embedded link support, file attachments, and daily reflections.
 ![Journal](./journal.png)
 
