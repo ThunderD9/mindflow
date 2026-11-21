@@ -11,9 +11,9 @@
 
 You can download the standalone desktop application for your operating system below. These installers bundle everything you need—no coding knowledge required!
 
-- [**Download for Windows (.exe)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-Setup-1.1.1.exe)
-- [**Download for macOS (.dmg)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.1.1-arm64.dmg)
-- [**Download for Linux (.AppImage)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.1.1.AppImage)
+- [**Download for Windows (.exe)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-Setup-1.1.3.exe)
+- [**Download for macOS (.dmg)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.1.3-arm64.dmg)
+- [**Download for Linux (.AppImage)**](https://github.com/ThunderD9/mindflow/releases/latest/download/Mindflow-1.1.3.AppImage)
 
 Alternatively, you can [**view the Releases page**](https://github.com/ThunderD9/mindflow/releases) to see all available versions, or download the raw source code (`.zip` and `.tar.gz`).
 
@@ -28,7 +28,7 @@ Alternatively, you can [**view the Releases page**](https://github.com/ThunderD9
 
 ### 1. Daily Time-Blocking Timeline
 Clean 1-hour time slices with customizable start times and sub-intervals inside any hour block.
-![Daily Timeline](./timeline.png)
+![Daily Timeline](./daily_main.png)
 
 ### 2. Tasks & Action
 Organized high-leverage action items with full priority, single-line dot badges, and weekday sorting.
