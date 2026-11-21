@@ -27,6 +27,9 @@ dist-electron-bin
 
 # Env
 .env
+# Backups and local user data
+*backup*.json
+*restored*.json
 .env.local
 .env.development.local
 .env.test.local

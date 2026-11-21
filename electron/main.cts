@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { autoUpdater } from 'electron-updater';
 
@@ -11,6 +11,10 @@ import('electron-context-menu').then(({ default: contextMenu }) => {
 });
 
 let mainWindow: BrowserWindow | null = null;
+
+// Configure autoUpdater: do NOT auto download or install silently
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -42,11 +46,39 @@ function createWindow() {
   });
 }
 
+// IPC Handlers for Updater
+ipcMain.handle('updater:start-download', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+});
+
+ipcMain.handle('updater:install', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+autoUpdater.on('update-available', (info) => {
+  mainWindow?.webContents.send('updater:available', info);
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  mainWindow?.webContents.send('updater:progress', progress);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  mainWindow?.webContents.send('updater:downloaded', info);
+});
+
 app.whenReady().then(() => {
   createWindow();
 
-  // Check for updates
-  autoUpdater.checkForUpdatesAndNotify();
+  // Check for updates if running packaged app
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

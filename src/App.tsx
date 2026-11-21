@@ -21,6 +21,38 @@ export const App: React.FC = () => {
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [initialAiPrompt, setInitialAiPrompt] = useState<string>('');
   const [viewDate, setViewDate] = useState<Date>(new Date());
+
+  // Safe manual updater state (Icon-only)
+  type UpdateStatus = 'idle' | 'available' | 'downloading' | 'downloaded';
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
+  const [downloadPercent, setDownloadPercent] = useState<number>(0);
+  const [updateVersion, setUpdateVersion] = useState<string>('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electronAPI) {
+      window.electronAPI.onUpdateAvailable((info) => {
+        setUpdateStatus('available');
+        if (info?.version) setUpdateVersion(info.version);
+      });
+      window.electronAPI.onUpdateProgress((progress) => {
+        setUpdateStatus('downloading');
+        if (progress?.percent) setDownloadPercent(Math.round(progress.percent));
+      });
+      window.electronAPI.onUpdateDownloaded((info) => {
+        setUpdateStatus('downloaded');
+        if (info?.version) setUpdateVersion(info.version);
+      });
+    }
+  }, []);
+
+  const handleUpdateClick = async () => {
+    if (updateStatus === 'available') {
+      setUpdateStatus('downloading');
+      await window.electronAPI?.startDownloadUpdate();
+    } else if (updateStatus === 'downloaded') {
+      window.electronAPI?.installUpdate();
+    }
+  };
   
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayShort = format(new Date(), 'EEE') as WeekDay;
@@ -71,15 +103,7 @@ export const App: React.FC = () => {
 
   // Sanitize and remove corrupted duplicates with the exact same ID on load
   useEffect(() => {
-    if (localStorage.getItem('MIGRATE_WIPE_V8') !== 'done') {
-      localStorage.removeItem('mindflow_diary');
-      localStorage.removeItem('mindflow_diary_v2');
-      localStorage.setItem('MIGRATE_WIPE_V8', 'done');
-      setDiaryEntries([]);
-      window.location.reload();
-      return;
-    }
-
+    // Ensure deduplication on load without wiping any data
     setDiaryEntries((prev) => {
       const seen = new Set();
       const deduplicated = prev.filter(entry => {
@@ -246,6 +270,10 @@ export const App: React.FC = () => {
             setInitialAiPrompt('');
             setIsCopilotOpen(true);
           }}
+          updateStatus={updateStatus}
+          downloadPercent={downloadPercent}
+          updateVersion={updateVersion}
+          onUpdateClick={handleUpdateClick}
         />
 
         {activeTab === 'timeline' && (

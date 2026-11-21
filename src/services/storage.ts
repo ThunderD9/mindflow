@@ -17,148 +17,21 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 // Clean, professional sample tasks
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 'task-sample-1',
-    title: 'Review Q4 product roadmap & sync with engineering team',
-    description: 'Align with design on badge contrast tokens and ensure offline sync specs are finalized.',
-    category: 'Work',
-    priority: 'high',
-    status: 'todo',
-    scheduledDay: 'Mon',
-    time: '08:00 AM',
-    durationHours: 1,
-    attachments: [{ id: 'att-1', type: 'file', url: '#', name: 'Roadmap_Spec_v2.pdf', size: 2400000, createdAt: new Date().toISOString() }],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-sample-2',
-    title: 'Deep work: Implement zero-knowledge encryption pipeline for local backups',
-    description: 'AES-GCM encryption with Argon2 key derivation. Zero plaintext leaks to disk.',
-    category: 'Work',
-    priority: 'urgent',
-    status: 'todo',
-    scheduledDay: 'Mon',
-    time: '09:00 AM',
-    durationHours: 1,
-    attachments: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-sample-3',
-    title: 'Founder pitch deck review with lead angel investors and technical advisors for Seed Round extension',
-    description: 'Prepare 10-slide deck focusing on user retention, offline architecture, and developer adoption metrics.',
-    category: 'Ideas',
-    priority: 'high',
-    status: 'todo',
-    scheduledDay: 'Mon',
-    time: '10:00 AM',
-    durationHours: 1,
-    attachments: [{ id: 'att-2', type: 'file', url: '#', name: 'Seed_Deck_Nov2026.pdf', size: 8100000, createdAt: new Date().toISOString() }],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-sample-4',
-    title: 'Architecture review: Optimize SQLite query planner and reduce cold start time',
-    description: 'Ensure vacuuming and index lookups stay under 12ms even on 100k+ records.',
-    category: 'Work',
-    priority: 'medium',
-    status: 'half_completed',
-    scheduledDay: 'Mon',
-    time: '11:00 AM',
-    durationHours: 1,
-    attachments: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-sample-5',
-    title: "Read Chapter 4 of 'Designing Data-Intensive Applications' on stream processing",
-    description: 'Focus on idempotent message processing and partition rebalancing.',
-    category: 'Learning',
-    priority: 'low',
-    status: 'todo',
-    scheduledDay: 'Mon',
-    time: '02:00 PM',
-    durationHours: 1,
-    attachments: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-sample-6',
-    title: 'Review and merge pull requests for release candidate v1.2.0',
-    description: 'All automated CI tests passed on Ubuntu, macOS, and Windows runners.',
-    category: 'Work',
-    priority: 'high',
-    status: 'completed',
-    scheduledDay: 'Mon',
-    time: '04:00 PM',
-    durationHours: 1,
-    attachments: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'task-sample-7',
-    title: '5km evening run & mobility recovery routine',
-    description: 'Pace: 5:15/km. Great energy today.',
-    category: 'Health',
-    priority: 'medium',
-    status: 'completed',
-    scheduledDay: 'Mon',
-    time: '05:30 PM',
-    durationHours: 1,
-    attachments: [],
-    createdAt: new Date().toISOString(),
-  },
-];
+const INITIAL_TASKS: Task[] = [];
+const INITIAL_DIARY: DiaryEntry[] = [];
+const INITIAL_GOALS: WeeklyGoal[] = [];
 
-// Clean, professional sample reflection note
-const INITIAL_DIARY: DiaryEntry[] = [
-  {
-    id: 'diary-sample-1',
-    date: new Date().toISOString().split('T')[0],
-    title: 'Building with Pure Intentionality',
-    content: '<h3>Focus on the Essentials</h3><p>Today was about stripping away noise. When building software, the temptation is always to add more knobs, more toggles, more surface area. But true power comes from clarity.</p><p>Key reflections for today:</p><ul><li><strong>Offline-first gives peace of mind:</strong> Users never have to worry about spinners, downtime, or network latency. Everything responds in 0ms.</li><li><strong>Visual rhythm matters:</strong> A well-aligned timeline brings calm to a chaotic workday.</li><li><strong>Ruthless prioritization:</strong> Accomplish 2 high-leverage objectives before noon, and the rest of the day is a victory.</li></ul><p>Steady progress beats frantic effort every single time.</p>',
-    mood: 'focused',
-    tags: ['Product', 'Focus', 'Mindset'],
-    attachments: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    isPinned: true,
-  },
-];
-
-// Single clean initial weekly objective
-const INITIAL_GOALS: WeeklyGoal[] = [
-  { id: 'goal-clean-1', weekId: 'current', title: 'Maintain steady focus throughout the week', completed: false },
-];
-
-// Ensure clean migration away from cluttered sample data
-const ensureMinimalistReset = () => {
-  try {
-    const isCleaned = localStorage.getItem(STORAGE_KEYS.CLEAN_FLAG);
-    if (!isCleaned) {
-      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(INITIAL_TASKS));
-      localStorage.setItem(STORAGE_KEYS.DIARY, JSON.stringify(INITIAL_DIARY));
-      localStorage.setItem(STORAGE_KEYS.WEEKLY_GOALS, JSON.stringify(INITIAL_GOALS));
-      localStorage.setItem(STORAGE_KEYS.CLEAN_FLAG, 'true');
-    }
-  } catch (e) {
-    // ignore localstorage errors
-  }
-};
-
+// Pure safe getter that never overwrites existing user data
 export const LocalStorageService = {
   getTasks: (): Task[] => {
     try {
-      ensureMinimalistReset();
       const data = localStorage.getItem(STORAGE_KEYS.TASKS);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(INITIAL_TASKS));
-        return INITIAL_TASKS;
+        return [];
       }
       return JSON.parse(data);
     } catch {
-      return INITIAL_TASKS;
+      return [];
     }
   },
 
@@ -172,15 +45,13 @@ export const LocalStorageService = {
 
   getDiaryEntries: (): DiaryEntry[] => {
     try {
-      ensureMinimalistReset();
       const data = localStorage.getItem(STORAGE_KEYS.DIARY);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.DIARY, JSON.stringify(INITIAL_DIARY));
-        return INITIAL_DIARY;
+        return [];
       }
       return JSON.parse(data);
     } catch {
-      return INITIAL_DIARY;
+      return [];
     }
   },
 
@@ -194,15 +65,13 @@ export const LocalStorageService = {
 
   getWeeklyGoals: (): WeeklyGoal[] => {
     try {
-      ensureMinimalistReset();
       const data = localStorage.getItem(STORAGE_KEYS.WEEKLY_GOALS);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.WEEKLY_GOALS, JSON.stringify(INITIAL_GOALS));
-        return INITIAL_GOALS;
+        return [];
       }
       return JSON.parse(data);
     } catch {
-      return INITIAL_GOALS;
+      return [];
     }
   },
 

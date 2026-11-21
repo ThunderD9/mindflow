@@ -4,7 +4,10 @@ import {
   CheckSquareIcon, 
   BookOpenIcon, 
   Sparkle, 
-  SettingsIcon, 
+  SettingsIcon,
+  Download,
+  Loader2,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { ActiveTab } from '../types';
 import { cn } from '@/lib/utils';
@@ -90,11 +93,19 @@ export const TopNav: React.FC<TopNavProps> = ({
 interface TopHeaderProps {
   onOpenSettings: () => void;
   onOpenAiCopilot: () => void;
+  updateStatus?: 'idle' | 'available' | 'downloading' | 'downloaded';
+  downloadPercent?: number;
+  updateVersion?: string;
+  onUpdateClick?: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
   onOpenSettings,
   onOpenAiCopilot,
+  updateStatus,
+  downloadPercent = 0,
+  updateVersion,
+  onUpdateClick,
 }) => {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pt-4 pb-12 sm:pb-16 grid grid-cols-[1fr_auto_1fr] items-center min-h-[64px] select-none font-sans shrink-0">
@@ -111,8 +122,41 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       {/* Center Spacer: Mathematically matches the floating center pill to ensure exact symmetrical 1fr balance on left and right */}
       <div className="w-[430px] sm:w-[480px] h-12 pointer-events-none" />
 
-      {/* Right: AI Copilot & Settings (Scrolls away naturally as you scroll down) */}
+      {/* Right: AI Copilot & Settings & Update Icon */}
       <div className="flex items-center justify-end gap-2.5">
+        {/* Update Icon (Only Icon, No Text) */}
+        {updateStatus && updateStatus !== 'idle' && (
+          <button
+            type="button"
+            onClick={onUpdateClick}
+            disabled={updateStatus === 'downloading'}
+            title={
+              updateStatus === 'available'
+                ? `Update ${updateVersion ? `v${updateVersion} ` : ''}available — Click to download`
+                : updateStatus === 'downloading'
+                ? `Downloading update… ${downloadPercent}%`
+                : `Update ${updateVersion ? `v${updateVersion} ` : ''}ready — Click to restart & apply`
+            }
+            className={cn(
+              'size-9 rounded-full flex items-center justify-center transition-all cursor-pointer select-none',
+              updateStatus === 'available' && 'text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 active:scale-95',
+              updateStatus === 'downloading' && 'text-sky-400 bg-sky-500/10 border border-sky-500/30 cursor-wait',
+              updateStatus === 'downloaded' && 'text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 active:scale-95'
+            )}
+            aria-label={
+              updateStatus === 'available'
+                ? 'Download update'
+                : updateStatus === 'downloading'
+                ? 'Downloading update'
+                : 'Restart and apply update'
+            }
+          >
+            {updateStatus === 'available' && <Download className="size-4 shrink-0 text-sky-400" aria-hidden="true" />}
+            {updateStatus === 'downloading' && <Loader2 className="size-4 shrink-0 animate-spin text-sky-400" aria-hidden="true" />}
+            {updateStatus === 'downloaded' && <ArrowUpCircle className="size-4 shrink-0 text-emerald-400" aria-hidden="true" />}
+          </button>
+        )}
+
         {/* AI Copilot Button */}
         <button
           type="button"
