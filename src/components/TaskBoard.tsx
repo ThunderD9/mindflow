@@ -68,6 +68,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
   const [dateFilter, setDateFilter] = useState<string>('This Week');
   const [sortBy, setSortBy] = useState<SortOption>('priority');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [expandedTitleIds, setExpandedTitleIds] = useState<Set<string>>(new Set());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -701,6 +702,8 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
             const isFailed = task.status === 'failed';
             const isHalfCompleted = task.status === 'half_completed';
             const isExpanded = expandedTaskId === task.id;
+            const isExpandedTitle = expandedTitleIds.has(task.id);
+            const isWayOverboard = task.title.length > 85;
 
             return (
               <Card 
@@ -710,133 +713,329 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                   isCompleted ? 'border-zinc-900 opacity-60' : isFailed ? 'border-rose-900/50 opacity-60' : isHalfCompleted ? 'border-yellow-900/50' : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/60'
                 )}
               >
-                <div onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="flex items-center justify-between gap-4 cursor-pointer select-none">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpdateTask(task.id, { status: isCompleted ? 'todo' : 'completed' });
-                      }}
-                      className="text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none shrink-0"
-                    >
-                      {isCompleted ? (
-                        <CheckCircle2Icon className="size-5 text-emerald-500" />
-                      ) : isFailed ? (
-                        <XCircleIcon className="size-5 text-rose-500" />
-                      ) : isHalfCompleted ? (
-                        <MinusCircleIcon className="size-5 text-yellow-500" />
-                      ) : (
-                        <CircleIcon className="size-5 text-zinc-600 group-hover:text-zinc-400" />
-                      )}
-                    </button>
-                    <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap" onClick={(e) => {
-                      if (editingTaskId === task.id) e.stopPropagation();
-                    }}>
-                      {editingTaskId === task.id ? (
-                        <input
-                          autoFocus
-                          value={editTitleBuffer}
-                          onChange={(e) => setEditTitleBuffer(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              onUpdateTask(task.id, { title: editTitleBuffer });
-                              setEditingTaskId(null);
-                            }
-                            if (e.key === 'Escape') {
-                              setEditingTaskId(null);
-                            }
-                          }}
-                          onBlur={() => {
-                            onUpdateTask(task.id, { title: editTitleBuffer });
-                            setEditingTaskId(null);
-                          }}
-                          className="h-8 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                <div onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="cursor-pointer select-none">
+                  {isWayOverboard ? (
+                    /* Big / Overflowing Tasks (> 85 chars): 2-line layout aligned with radio button */
+                    <div className="flex flex-col gap-2 min-w-0 flex-1">
+                      {/* Line 1: Radio + Title on Left, Down Chevron + Edit + Action buttons on Right */}
+                      <div className="flex items-start justify-between gap-3 min-w-0 w-full">
+                        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateTask(task.id, { status: isCompleted ? 'todo' : 'completed' });
+                            }}
+                            className="text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none shrink-0 mt-0.5"
+                          >
+                            {isCompleted ? (
+                              <CheckCircle2Icon className="size-5 text-emerald-500" />
+                            ) : isFailed ? (
+                              <XCircleIcon className="size-5 text-rose-500" />
+                            ) : isHalfCompleted ? (
+                              <MinusCircleIcon className="size-5 text-yellow-500" />
+                            ) : (
+                              <CircleIcon className="size-5 text-zinc-600 group-hover:text-zinc-400" />
+                            )}
+                          </button>
+
+                          <div 
+                            className="min-w-0 flex-1" 
+                            onClick={(e) => {
+                              if (editingTaskId === task.id) e.stopPropagation();
+                            }}
+                          >
+                            {editingTaskId === task.id ? (
+                              <input
+                                autoFocus
+                                value={editTitleBuffer}
+                                onChange={(e) => setEditTitleBuffer(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    onUpdateTask(task.id, { title: editTitleBuffer });
+                                    setEditingTaskId(null);
+                                  }
+                                  if (e.key === 'Escape') {
+                                    setEditingTaskId(null);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  onUpdateTask(task.id, { title: editTitleBuffer });
+                                  setEditingTaskId(null);
+                                }}
+                                className="h-8 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                              />
+                            ) : (
+                              <span className={cn(
+                                'text-sm font-semibold tracking-tight leading-5 block',
+                                isExpandedTitle ? 'break-words' : 'truncate',
+                                isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100'
+                              )}>
+                                {task.title}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right side: Down Chevron + Edit + Action buttons ALWAYS on first line */}
+                        <div className="flex items-center gap-1 shrink-0 self-start">
+                          {editingTaskId !== task.id && (
+                            <>
+                              <button
+                                type="button"
+                                title={isExpandedTitle ? "Show less" : "See all of the text"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedTitleIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(task.id)) next.delete(task.id);
+                                    else next.add(task.id);
+                                    return next;
+                                  });
+                                }}
+                                className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                              >
+                                {isExpandedTitle ? (
+                                  <ChevronUpIcon className="size-4 text-indigo-400" />
+                                ) : (
+                                  <ChevronDownIcon className="size-4" />
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                title="Edit task title"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditTitleBuffer(task.title);
+                                  setEditingTaskId(task.id);
+                                }}
+                                className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                              >
+                                <Edit2Icon className="size-4" />
+                              </button>
+                            </>
+                          )}
+
+                          <button
+                            type="button"
+                            title="Mark as half completed"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
+                            }}
+                            className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400 hover:bg-zinc-800")}
+                          >
+                            <MinusCircleIcon className="size-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Mark as Skipped / Cancelled"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
+                            }}
+                            className={cn("p-1 rounded-md transition-colors", isFailed ? "text-rose-500 hover:text-rose-400" : "text-zinc-500 hover:text-rose-400 hover:bg-zinc-800")}
+                          >
+                            <XIcon className="size-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteTask(task.id);
+                            }}
+                            className="text-zinc-500 hover:text-rose-400 p-1 hover:bg-zinc-800 rounded-md transition-colors"
+                            title="Delete task"
+                          >
+                            <Trash2Icon className="size-4" />
+                          </button>
+
+                          <div className="text-zinc-500 hover:text-zinc-300 p-1 transition-colors">
+                            {isExpanded ? <ChevronUpIcon className="size-4 text-zinc-400" /> : <ChevronDownIcon className="size-4 text-zinc-500" />}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Line 2: Indented under radio button (align with text) */}
+                      <div className="flex items-center gap-2.5 pl-[34px] flex-wrap">
+                        {task.scheduledDay && (
+                          <span className="text-xs font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md text-zinc-300 font-medium shrink-0">
+                            {task.scheduledDay} {task.time || ''}
+                          </span>
+                        )}
+
+                        {task.attachments && task.attachments.length > 0 && (
+                          <Badge variant="outline" className="text-xs font-mono rounded-md bg-zinc-900 border-zinc-800 text-zinc-400 gap-1 px-1.5 py-0.5 shrink-0">
+                            <PaperclipIcon className="size-3" />
+                            <span>{task.attachments.length}</span>
+                          </Badge>
+                        )}
+
+                        <PriorityPicker
+                          value={task.priority || 'medium'}
+                          onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
+                          variant="badge"
                         />
-                      ) : (
-                        <span className={cn('text-sm font-semibold truncate tracking-tight leading-none', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100')}>
-                          {task.title}
-                        </span>
-                      )}
-                      <PriorityPicker
-                        value={task.priority || 'medium'}
-                        onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
-                        variant="badge"
-                      />
-                      
-                      {editingTaskId !== task.id && (
+
+                        <CategoryPicker
+                          value={task.category || 'General'}
+                          onChange={(newCat) => onUpdateTask(task.id, { category: newCat })}
+                          existingCategories={tasks.map(t => t.category)}
+                          variant="badge"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    /* Single-line Task: Not overflowing */
+                    <div className="flex items-center justify-between gap-4 min-w-0 flex-1">
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
                         <button
                           type="button"
-                          title="Edit task title"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setEditTitleBuffer(task.title);
-                            setEditingTaskId(task.id);
+                            onUpdateTask(task.id, { status: isCompleted ? 'todo' : 'completed' });
                           }}
-                          className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md transition-colors ml-1"
+                          className="text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none shrink-0"
                         >
-                          <Edit2Icon className="size-3.5" />
+                          {isCompleted ? (
+                            <CheckCircle2Icon className="size-5 text-emerald-500" />
+                          ) : isFailed ? (
+                            <XCircleIcon className="size-5 text-rose-500" />
+                          ) : isHalfCompleted ? (
+                            <MinusCircleIcon className="size-5 text-yellow-500" />
+                          ) : (
+                            <CircleIcon className="size-5 text-zinc-600 group-hover:text-zinc-400" />
+                          )}
                         </button>
-                      )}
+
+                        <div 
+                          className="min-w-0 flex items-center gap-2 flex-1" 
+                          onClick={(e) => {
+                            if (editingTaskId === task.id) e.stopPropagation();
+                          }}
+                        >
+                          {editingTaskId === task.id ? (
+                            <input
+                              autoFocus
+                              value={editTitleBuffer}
+                              onChange={(e) => setEditTitleBuffer(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  onUpdateTask(task.id, { title: editTitleBuffer });
+                                  setEditingTaskId(null);
+                                }
+                                if (e.key === 'Escape') {
+                                  setEditingTaskId(null);
+                                }
+                              }}
+                              onBlur={() => {
+                                onUpdateTask(task.id, { title: editTitleBuffer });
+                                setEditingTaskId(null);
+                              }}
+                              className="h-8 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                            />
+                          ) : (
+                            <span className={cn(
+                              'text-sm font-semibold truncate tracking-tight leading-5 shrink min-w-0',
+                              isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100'
+                            )}>
+                              {task.title}
+                            </span>
+                          )}
+
+                          {/* Priority dot right after title */}
+                          <PriorityPicker
+                            value={task.priority || 'medium'}
+                            onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
+                            variant="badge"
+                            collapseDot={true}
+                          />
+
+                          {/* Edit button at the end of the text */}
+                          {editingTaskId !== task.id && (
+                            <button
+                              type="button"
+                              title="Edit task title"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditTitleBuffer(task.title);
+                                setEditingTaskId(task.id);
+                              }}
+                              className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors shrink-0 cursor-pointer"
+                            >
+                              <Edit2Icon className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right side: Attachments + Scheduled Day/Time + Category + Action buttons + Drawer chevron */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        {task.attachments && task.attachments.length > 0 && (
+                          <Badge variant="outline" className="text-xs font-mono rounded-md bg-zinc-900 border-zinc-800 text-zinc-400 gap-1 px-1.5 py-0.5">
+                            <PaperclipIcon className="size-3" />
+                            <span>{task.attachments.length}</span>
+                          </Badge>
+                        )}
+
+                        {task.scheduledDay && (
+                          <span className="text-xs font-mono bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md text-zinc-300 font-medium">
+                            {task.scheduledDay} {task.time || ''}
+                          </span>
+                        )}
+
+                        <CategoryPicker
+                          value={task.category || 'General'}
+                          onChange={(newCat) => onUpdateTask(task.id, { category: newCat })}
+                          existingCategories={tasks.map(t => t.category)}
+                          variant="badge"
+                        />
+
+                        <button
+                          type="button"
+                          title="Mark as half completed"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
+                          }}
+                          className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400 hover:bg-zinc-800")}
+                        >
+                          <MinusCircleIcon className="size-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          title="Mark as Skipped / Cancelled"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
+                          }}
+                          className={cn("p-1 rounded-md transition-colors", isFailed ? "text-rose-500 hover:text-rose-400" : "text-zinc-500 hover:text-rose-400 hover:bg-zinc-800")}
+                        >
+                          <XIcon className="size-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTask(task.id);
+                          }}
+                          className="text-zinc-500 hover:text-rose-400 p-1 hover:bg-zinc-800 rounded-md transition-colors"
+                          title="Delete task"
+                        >
+                          <Trash2Icon className="size-4" />
+                        </button>
+
+                        <div className="text-zinc-500 hover:text-zinc-300 p-1 transition-colors">
+                          {isExpanded ? <ChevronUpIcon className="size-4 text-zinc-400" /> : <ChevronDownIcon className="size-4 text-zinc-500" />}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    {task.attachments && task.attachments.length > 0 && (
-                      <Badge variant="outline" className="text-xs font-mono rounded-md bg-zinc-900 border-zinc-800 text-zinc-400 gap-1 px-2 py-0.5">
-                        <PaperclipIcon className="size-3" />
-                        <span>{task.attachments.length}</span>
-                      </Badge>
-                    )}
-                    {task.scheduledDay && (
-                      <span className="text-xs font-mono bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md text-zinc-300 font-medium">
-                        {task.scheduledDay} {task.time || ''}
-                      </span>
-                    )}
-                    <CategoryPicker
-                      value={task.category || 'General'}
-                      onChange={(newCat) => onUpdateTask(task.id, { category: newCat })}
-                      existingCategories={tasks.map(t => t.category)}
-                      variant="badge"
-                    />
-                    
-                    <button
-                      type="button"
-                      title="Mark as half completed"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
-                      }}
-                      className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400")}
-                    >
-                      <MinusCircleIcon className="size-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      title="Mark as Skipped / Cancelled"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
-                      }}
-                      className="text-zinc-500 hover:text-rose-400 p-1 rounded-md transition-colors"
-                    >
-                      <XIcon className="size-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteTask(task.id);
-                      }}
-                      className="text-zinc-500 hover:text-rose-400 p-1 rounded-md transition-colors"
-                      title="Delete task"
-                    >
-                      <Trash2Icon className="size-4" />
-                    </button>
-                    {isExpanded ? <ChevronUpIcon className="size-4 text-zinc-400" /> : <ChevronDownIcon className="size-4 text-zinc-500" />}
-                  </div>
+                  )}
                 </div>
 
                 {isExpanded && (
