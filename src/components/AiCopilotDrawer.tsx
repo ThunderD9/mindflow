@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, Send, X, Bot, User, CheckCircle, RefreshCw, Key, Trash2 } from 'lucide-react';
-import { AiChatMessage, Task, DiaryEntry, WeeklyGoal, AppSettings } from '../types';
+import { AiChatMessage, Task, DiaryEntry, AppSettings } from '../types';
 import { GeminiService, AppStateHandlers } from '../services/geminiService';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -15,7 +15,6 @@ interface AiCopilotDrawerProps {
   onOpenSettings: () => void;
   tasks: Task[];
   diaryEntries: DiaryEntry[];
-  weeklyGoals: WeeklyGoal[];
   chatHistory: AiChatMessage[];
   setChatHistory: React.Dispatch<React.SetStateAction<AiChatMessage[]>>;
   appStateHandlers: AppStateHandlers;
@@ -36,7 +35,6 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
   onOpenSettings,
   tasks,
   diaryEntries,
-  weeklyGoals,
   chatHistory = [],
   setChatHistory,
   appStateHandlers,
@@ -92,7 +90,6 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({
         messageText,
         tasks || [],
         diaryEntries || [],
-        weeklyGoals || [],
         appStateHandlers,
         chatHistory
       );

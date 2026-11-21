@@ -2,7 +2,6 @@ import React from 'react';
 import { 
   CheckSquareIcon, 
   BookOpenIcon, 
-  CalendarIcon, 
   SparklesIcon, 
   SettingsIcon, 
   FeatherIcon
@@ -38,7 +37,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const navItems = [
     { id: 'tasks' as ActiveTab, label: 'Tasks', icon: CheckSquareIcon, count: openTasksCount },
     { id: 'diary' as ActiveTab, label: 'Notes & Diary', icon: BookOpenIcon, count: notesCount },
-    { id: 'weekly' as ActiveTab, label: 'Weekly Plan', icon: CalendarIcon, count: null },
   ];
 
   return (

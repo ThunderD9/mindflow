@@ -297,3 +297,19 @@ ul[data-type="taskList"] li[data-checked="true"] > div {
   pointer-events: none;
   height: 0;
 }
+
+/* Custom Glassmorphism Styles */
+.glass-nav {
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  background: #08080a94;
+  border: 1px solid #ffffff1a;
+}
+
+.glass-pill {
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  background: #ffffff0a;
+  border: 1px solid #ffffff1a;
+  border-radius: 9999px;
+}

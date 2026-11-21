@@ -3,33 +3,24 @@ import {
   ClockIcon, 
   CheckSquareIcon, 
   BookOpenIcon, 
-  CalendarIcon, 
-  SparklesIcon, 
+  Sparkle, 
   SettingsIcon, 
-  ZapIcon
 } from 'lucide-react';
 import { ActiveTab } from '../types';
-import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 
 interface TopNavProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
-  onOpenSettings: () => void;
-  onOpenAiCopilot: () => void;
   taskCount: number;
   diaryCount: number;
-  currentModel: string;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
   activeTab,
   onTabChange,
-  onOpenSettings,
-  onOpenAiCopilot,
   taskCount,
   diaryCount,
-  currentModel,
 }) => {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     {
@@ -49,101 +40,21 @@ export const TopNav: React.FC<TopNavProps> = ({
       icon: <BookOpenIcon className="size-4 text-amber-400" aria-hidden="true" />,
       badge: diaryCount,
     },
-    {
-      id: 'weekly',
-      label: 'Weekly Planner',
-      icon: <CalendarIcon className="size-4 text-sky-400" aria-hidden="true" />,
-    },
   ];
 
-  const formatModelName = (modelStr: string) => {
-    if (modelStr.includes('3.6-flash')) return 'Gemini 3.6 Flash';
-    if (modelStr.includes('3.6-pro') || modelStr.includes('3.6-ultra')) return 'Gemini 3.6 Pro';
-    if (modelStr.includes('3.0-flash')) return 'Gemini 3.0 Flash';
-    return 'Gemini AI';
-  };
-
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md transition-all font-sans select-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-        
-        {/* Brand Identity */}
-        <div className="flex items-center shrink-0">
-          <div className="flex flex-col">
-            <span className="font-extrabold tracking-tight text-zinc-100 text-base flex items-center gap-2 font-heading">
-              <span>MindFlow</span>
-              <span className="text-xs font-mono uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-300 border border-zinc-800">
-                OS
-              </span>
-            </span>
-          </div>
-        </div>
-
-        {/* Center Navigation Tab Switcher ("Minimal But Cool" Affordance) */}
-        <nav className="hidden md:flex items-center gap-1 bg-zinc-900/70 p-1.5 rounded-2xl border border-zinc-800/80 shadow-xs">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onTabChange(item.id)}
-                className={cn(
-                  'h-8 px-3 rounded-lg text-xs font-medium transition-all inline-flex items-center gap-2 relative select-none font-sans',
-                  isActive 
-                    ? 'bg-zinc-100 text-zinc-950 font-bold shadow-xs' 
-                    : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60'
-                )}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className={cn(
-                    'text-xs font-mono tabular-nums px-2 py-0.5 rounded-full font-semibold transition-colors',
-                    isActive ? 'bg-zinc-900 text-zinc-200' : 'bg-zinc-800 text-zinc-400'
-                  )}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Right Action Utilities & Founder Copilot Trigger */}
-        <div className="flex items-center gap-3 shrink-0">
-          {/* AI Copilot Chat Toggle */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onOpenAiCopilot}
-            className="h-8 px-3 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs font-medium rounded-lg gap-2 transition-all duration-200 font-sans border border-transparent hover:border-zinc-800"
-          >
-            <SparklesIcon className="size-3.5 text-indigo-400" aria-hidden="true" />
-            <span>AI Copilot</span>
-            <span className="hidden sm:inline-block text-[10px] font-mono uppercase bg-zinc-900 px-1.5 py-0.5 rounded text-zinc-500 font-medium tracking-tight border border-zinc-800">
-              Ctrl+K
-            </span>
-          </Button>
-
-          {/* Settings / Local Storage Modal Toggle */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onOpenSettings}
-            title="Open Local Settings & API Keys"
-            aria-label="Settings and computer storage setup"
-            className="size-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded-lg border border-transparent hover:border-zinc-800 transition-all duration-200"
-          >
-            <SettingsIcon className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Mobile Bar */}
-      <div className="md:hidden flex items-center justify-around gap-1.5 px-3 py-2.5 border-t border-zinc-800/80 bg-zinc-950/95 overflow-x-auto">
+    <header className="fixed top-4 left-0 right-0 z-50 flex justify-center pointer-events-none select-none font-sans px-4">
+      {/* ONLY the 3 Navigation Tabs floating in the glass pill */}
+      <nav 
+        className="glass-nav p-1.5 rounded-full flex items-center gap-1.5 shadow-2xl pointer-events-auto h-12"
+        style={{
+          WebkitBackdropFilter: 'blur(24px) saturate(1.8)',
+          backdropFilter: 'blur(24px) saturate(1.8)',
+          background: '#08080a94',
+          border: '1px solid #ffffff1a',
+          borderRadius: '9999px',
+        }}
+      >
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -152,16 +63,77 @@ export const TopNav: React.FC<TopNavProps> = ({
               type="button"
               onClick={() => onTabChange(item.id)}
               className={cn(
-                'h-9 px-3.5 rounded-xl text-sm font-medium transition-all inline-flex items-center gap-2 shrink-0 font-sans',
-                isActive ? 'bg-zinc-100 text-zinc-950 font-bold shadow-xs' : 'text-zinc-400 hover:bg-zinc-900'
+                'h-9 px-4 sm:px-5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-2 select-none cursor-pointer',
+                isActive 
+                  ? 'text-white bg-white/[0.12] border border-white/[0.15] shadow-xs font-semibold' 
+                  : 'text-[#8e8e93] hover:text-[#e4e4e7] hover:bg-white/[0.05]'
               )}
             >
               {item.icon}
-              <span>{item.label}</span>
+              <span className="tracking-tight">{item.label}</span>
+              {item.badge !== undefined && item.badge > 0 && (
+                <span className={cn(
+                  'text-xs font-mono tabular-nums px-2 py-0.5 rounded-full font-bold transition-colors ml-0.5',
+                  isActive ? 'bg-zinc-900 text-zinc-100 border border-white/10' : 'bg-zinc-800/80 text-zinc-400'
+                )}>
+                  {item.badge}
+                </span>
+              )}
             </button>
           );
         })}
-      </div>
+      </nav>
     </header>
+  );
+};
+
+interface TopHeaderProps {
+  onOpenSettings: () => void;
+  onOpenAiCopilot: () => void;
+}
+
+export const TopHeader: React.FC<TopHeaderProps> = ({
+  onOpenSettings,
+  onOpenAiCopilot,
+}) => {
+  return (
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pt-4 pb-12 sm:pb-16 grid grid-cols-[1fr_auto_1fr] items-center min-h-[64px] select-none font-sans shrink-0">
+      {/* Left: Original Brand Identity with Flat Compact OS Badge */}
+      <div className="flex items-center justify-start gap-2">
+        <span className="font-extrabold tracking-tight text-zinc-100 text-base flex items-center gap-2 font-heading">
+          <span>MindFlow</span>
+          <span className="h-5 px-1.5 rounded-md bg-zinc-900 text-zinc-300 border border-zinc-800 text-[11px] font-mono uppercase font-bold tracking-wider inline-flex items-center justify-center leading-none">
+            OS
+          </span>
+        </span>
+      </div>
+
+      {/* Center Spacer: Mathematically matches the floating center pill to ensure exact symmetrical 1fr balance on left and right */}
+      <div className="w-[430px] sm:w-[480px] h-12 pointer-events-none" />
+
+      {/* Right: AI Copilot & Settings (Scrolls away naturally as you scroll down) */}
+      <div className="flex items-center justify-end gap-2.5">
+        {/* AI Copilot Button */}
+        <button
+          type="button"
+          onClick={onOpenAiCopilot}
+          className="h-9 px-3.5 bg-zinc-100 hover:bg-white active:scale-[0.98] text-zinc-950 font-semibold text-xs sm:text-sm rounded-full inline-flex items-center gap-1.5 shadow-sm transition-all duration-150 cursor-pointer"
+          title="Open AI Copilot (Ctrl+K)"
+        >
+          <Sparkle className="size-3.5 text-zinc-950 shrink-0" aria-hidden="true" />
+          <span className="font-sans">AI</span>
+        </button>
+
+        {/* Settings Toggle */}
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          title="Open Settings & API Keys"
+          className="size-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-colors cursor-pointer"
+        >
+          <SettingsIcon className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   );
 };

@@ -1,21 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { cn, getEffectiveDate } from './lib/utils';
-import { Task, DiaryEntry, WeeklyGoal, AppSettings, ActiveTab, AiChatMessage, WeekDay } from './types';
+import { Task, DiaryEntry, AppSettings, ActiveTab, AiChatMessage, WeekDay } from './types';
 import { LocalStorageService } from './services/storage';
 import { GeminiService } from './services/geminiService';
-import { TopNav } from './components/TopNav';
+import { TopNav, TopHeader } from './components/TopNav';
 import { DailyTimelineView } from './components/DailyTimelineView';
 import { TaskBoard } from './components/TaskBoard';
 import { JournalWorkspace } from './components/JournalWorkspace';
-import { WeeklySchedule } from './components/WeeklySchedule';
 import { AiCopilotDrawer } from './components/AiCopilotDrawer';
 import { SettingsModal } from './components/SettingsModal';
 
 export const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>(() => LocalStorageService.getTasks());
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => LocalStorageService.getDiaryEntries());
-  const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoal[]>(() => LocalStorageService.getWeeklyGoals());
   const [settings, setSettings] = useState<AppSettings>(() => LocalStorageService.getSettings());
   
   const [activeTab, setActiveTab] = useState<ActiveTab>('timeline');
@@ -46,12 +44,16 @@ export const App: React.FC = () => {
 
   const [aiService, setAiService] = useState<GeminiService | null>(null);
 
-  // Keyboard shortcut Ctrl+K / Cmd+K to open Founder Copilot
+  // Keyboard shortcuts: Ctrl+K for Copilot, Ctrl+, for Settings
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setIsCopilotOpen((prev) => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        setIsSettingsOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -89,10 +91,6 @@ export const App: React.FC = () => {
       return prev;
     });
   }, []);
-
-  useEffect(() => {
-    LocalStorageService.saveWeeklyGoals(weeklyGoals);
-  }, [weeklyGoals]);
 
   useEffect(() => {
     LocalStorageService.saveSettings(settings);
@@ -171,16 +169,6 @@ export const App: React.FC = () => {
         });
         return newEntry;
       },
-      addGoals: (goalTitles: string[]) => {
-        const created = goalTitles.map((title) => ({
-          id: 'goal-ai-' + Math.random().toString(36).substring(2, 9),
-          weekId: 'current',
-          title,
-          completed: false,
-          attachments: [],
-        }));
-        setWeeklyGoals((prev) => [...prev, ...created]);
-      },
     };
 
     const service = new GeminiService(settings.geminiApiKey, settings.model || 'gemini-3.6-flash', handlers);
@@ -234,57 +222,32 @@ export const App: React.FC = () => {
     setDiaryEntries((prev) => prev.filter((entry) => entry.id !== id));
   }, []);
 
-  // Weekly Goal Handlers
-  const handleAddGoal = useCallback((goalData: any, timeStr?: string) => {
-    const title = typeof goalData === 'string' ? goalData : goalData.title;
-    const timeVal = typeof goalData === 'string' ? timeStr : goalData.time;
-    if (!title || !title.trim()) return;
-    const newGoal: WeeklyGoal = {
-      id: 'goal-' + crypto.randomUUID(),
-      weekId: 'current',
-      title: title.trim(),
-      completed: false,
-      time: timeVal || '09:00 AM',
-      attachments: [],
-    };
-    setWeeklyGoals((prev) => [...prev, newGoal]);
-  }, []);
-
-  const handleUpdateGoal = useCallback((id: string, updates: Partial<WeeklyGoal>) => {
-    setWeeklyGoals((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
-  }, []);
-
-  const handleToggleGoal = useCallback((id: string) => {
-    setWeeklyGoals((prev) => prev.map((g) => (g.id === id ? { ...g, completed: !g.completed } : g)));
-  }, []);
-
-  const handleDeleteGoal = useCallback((id: string) => {
-    setWeeklyGoals((prev) => prev.filter((g) => g.id !== id));
-  }, []);
-
   const handleOpenAiWithPrompt = useCallback((prompt: string) => {
     setInitialAiPrompt(prompt);
     setIsCopilotOpen(true);
   }, []);
 
   return (
-    <div className="h-screen bg-zinc-950 text-zinc-100 font-sans antialiased flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200 overflow-hidden">
-      {/* Sleek Top Navigation Bar */}
+    <div className="h-screen bg-zinc-950 text-zinc-100 font-sans antialiased flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200 overflow-hidden relative">
+      {/* Floating 3-Tabs Glass Nav (Sticks and stays floating when scrolling) */}
       <TopNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenAiCopilot={() => {
-          setInitialAiPrompt('');
-          setIsCopilotOpen(true);
-        }}
         taskCount={todaysTaskCount}
         diaryCount={diaryEntries.length}
-        currentModel={settings.model || 'gemini-3.6-flash'}
       />
 
-      {/* Main Content Workspace */}
-      <main className={cn("flex-1 w-full font-sans", activeTab !== 'diary' ? "max-w-7xl mx-auto px-4 sm:px-6 py-8 overflow-y-auto" : "flex flex-col overflow-hidden")}>
+      {/* Main Content Workspace (Scrolls naturally) */}
+      <main className={cn("flex-1 w-full font-sans", activeTab !== 'diary' ? "max-w-7xl mx-auto px-4 sm:px-6 pb-12 overflow-y-auto" : "flex flex-col overflow-hidden")}>
+        {/* Static Header Row: Logo & AI/Settings sit at the top and scroll away as you scroll */}
+        <TopHeader
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenAiCopilot={() => {
+            setInitialAiPrompt('');
+            setIsCopilotOpen(true);
+          }}
+        />
+
         {activeTab === 'timeline' && (
           <DailyTimelineView
             tasks={tasks}
@@ -319,22 +282,6 @@ export const App: React.FC = () => {
           />
         )}
 
-        {activeTab === 'weekly' && (
-          <WeeklySchedule
-            tasks={tasks}
-            goals={weeklyGoals}
-            onAddTask={handleAddTask}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onAddGoal={handleAddGoal}
-            onUpdateGoal={handleUpdateGoal}
-            onDeleteGoal={handleDeleteGoal}
-            onOpenAiWithPrompt={handleOpenAiWithPrompt}
-            viewDate={viewDate}
-            setViewDate={setViewDate}
-          />
-        )}
-
         {activeTab === 'settings' && (
           <div className="max-w-2xl mx-auto text-center py-16">
             <h2 className="text-xl font-bold mb-4">Local Computer Settings</h2>
@@ -360,7 +307,6 @@ export const App: React.FC = () => {
         }}
         tasks={tasks}
         diaryEntries={diaryEntries}
-        weeklyGoals={weeklyGoals}
         chatHistory={chatMessages}
         setChatHistory={setChatMessages}
         appStateHandlers={{
@@ -407,9 +353,6 @@ export const App: React.FC = () => {
           addDiary: (entryData) => {
             return handleAddDiaryEntry(entryData);
           },
-          addGoals: (goalTitles) => {
-            goalTitles.forEach((gt) => handleAddGoal(gt));
-          }
         }}
         initialPrompt={initialAiPrompt}
         onClearInitialPrompt={() => setInitialAiPrompt('')}

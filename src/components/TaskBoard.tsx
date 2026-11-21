@@ -5,7 +5,7 @@ import {
   CircleIcon, 
   Trash2Icon, 
   FilterIcon, 
-  SparklesIcon,
+  Sparkle,
   ChevronDownIcon,
   ChevronUpIcon,
   PaperclipIcon,
@@ -17,7 +17,9 @@ import {
   XIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  MinusCircleIcon
+  MinusCircleIcon,
+  SearchIcon,
+  CheckIcon
 } from 'lucide-react';
 import { format, addDays, startOfWeek, isToday, isSameDay, addWeeks, isSameMonth, isSameYear } from 'date-fns';
 import { Task, TaskCategory, Priority, WeekDay } from '../types';
@@ -26,9 +28,12 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Calendar } from './ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { MediaAttachments } from './MediaAttachments';
+import { CategoryPicker, PriorityPicker } from './TaskPropertyPickers';
 import { cn, getEffectiveDate } from '@/lib/utils';
 
 interface TaskBoardProps {
@@ -58,19 +63,57 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
   const [selectedDateStr, setSelectedDateStr] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'todo' | 'completed' | 'failed' | 'half_completed'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
+  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<string>('This Week');
   const [sortBy, setSortBy] = useState<SortOption>('priority');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTitleBuffer, setEditTitleBuffer] = useState('');
 
-  const categories = ['All', 'Work', 'Personal', 'Health', 'Learning', 'Ideas'];
+  const DEFAULT_FILTER_CATEGORIES = useMemo(() => [
+    'All',
+    'Work',
+    'Personal',
+    'Health',
+    'Learning',
+    'Ideas',
+    'General',
+  ], []);
+
+  const recentCustomCategories = useMemo(() => {
+    const seen = new Set<string>();
+    const custom: string[] = [];
+    const sorted = [...tasks].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    for (const t of sorted) {
+      if (t.category && !DEFAULT_FILTER_CATEGORIES.includes(t.category)) {
+        if (!seen.has(t.category)) {
+          seen.add(t.category);
+          custom.push(t.category);
+        }
+      }
+    }
+    return custom;
+  }, [tasks, DEFAULT_FILTER_CATEGORIES]);
+
+  const categoryQuery = categorySearchQuery.trim().toLowerCase();
+  const filteredDefaults = useMemo(() => {
+    if (!categoryQuery) return DEFAULT_FILTER_CATEGORIES;
+    return DEFAULT_FILTER_CATEGORIES.filter((c) => c.toLowerCase().includes(categoryQuery));
+  }, [categoryQuery, DEFAULT_FILTER_CATEGORIES]);
+
+  const filteredCustom = useMemo(() => {
+    if (!categoryQuery) return recentCustomCategories;
+    return recentCustomCategories.filter((c) => c.toLowerCase().includes(categoryQuery));
+  }, [categoryQuery, recentCustomCategories]);
   
   const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
   const scheduleDates = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [viewDate, weekStart]);
+  const isViewingThisWeek = isSameDay(weekStart, startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +189,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
       case 'high':
         return <Badge variant="outline" className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">High</Badge>;
       case 'medium':
-        return <Badge variant="outline" className="font-mono text-xs font-medium px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-400 border border-sky-500/30">Medium</Badge>;
+        return <Badge variant="outline" className="font-mono text-xs font-medium px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-400 border border-sky-500/30">Mid</Badge>;
       default:
         return <Badge variant="outline" className="font-mono text-xs font-medium px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700/60">Low</Badge>;
     }
@@ -160,6 +203,71 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl text-zinc-100 flex items-center gap-2.5 font-heading">
             <LayersIcon className="size-6 text-zinc-300" aria-hidden="true" />
             <span>Task Matrix</span>
+            <div className="flex items-center ml-3 gap-1">
+              <button 
+                type="button"
+                onClick={() => {
+                  if (setViewDate) {
+                    setViewDate(addWeeks(viewDate, -1));
+                    if (!['This Week', 'This Month', 'This Year', 'All Time'].includes(dateFilter)) {
+                      setDateFilter('This Week');
+                    }
+                  }
+                }}
+                className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                title="Previous week"
+              >
+                <ChevronLeftIcon className="size-3.5" />
+              </button>
+
+              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-xs font-medium font-sans text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 px-2 py-1 rounded-md min-w-[70px] text-center select-none transition-colors cursor-pointer"
+                    title="Click to select a week from calendar"
+                  >
+                    {isViewingThisWeek ? 'This Week' : `Week of ${format(weekStart, 'MMM d')}`}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 border-zinc-700 bg-zinc-900 rounded-xl shadow-xl z-50" align="start">
+                  <Calendar
+                    modifiers={{
+                      range_start: [weekStart],
+                      range_end: [addDays(weekStart, 6)],
+                      range_middle: Array.from({ length: 5 }).map((_, i) => addDays(weekStart, i + 1))
+                    }}
+                    onDayClick={(day: Date) => {
+                      if (day && setViewDate) {
+                        setViewDate(day);
+                        if (!['This Week', 'This Month', 'This Year', 'All Time'].includes(dateFilter)) {
+                          setDateFilter('This Week');
+                        }
+                        setIsCalendarOpen(false);
+                      }
+                    }}
+                    captionLayout="dropdown"
+                    className="text-zinc-100 bg-zinc-900 rounded-xl"
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  if (setViewDate) {
+                    setViewDate(addWeeks(viewDate, 1));
+                    if (!['This Week', 'This Month', 'This Year', 'All Time'].includes(dateFilter)) {
+                      setDateFilter('This Week');
+                    }
+                  }
+                }}
+                className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                title="Next week"
+              >
+                <ChevronRightIcon className="size-3.5" />
+              </button>
+            </div>
           </h1>
           <p className="text-sm text-zinc-400 mt-1.5 leading-normal">
             Organized high-leverage action items with full priority and weekday sorting.
@@ -167,43 +275,18 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
         </div>
 
         {onOpenAiWithPrompt && (
-          <Button
+          <button
             type="button"
-            size="sm"
             onClick={() => {
               const openList = tasks.filter(t => t.status !== 'completed').map(t => `[${t.priority}] ${t.title}`).join('\n');
               onOpenAiWithPrompt(`As my Startup Founder AI Copilot, audit my task list:\n\n${openList}`);
             }}
-            className="h-10 px-4 bg-zinc-100 text-zinc-950 hover:bg-zinc-200 font-semibold text-sm rounded-xl inline-flex items-center gap-2 shadow-xs shrink-0 transition-all duration-200"
+            title="AI Task Audit"
+            className="glass-pill size-10 rounded-xl flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
           >
-            <SparklesIcon className="size-4 text-zinc-950" aria-hidden="true" />
-            <span>AI Task Audit</span>
-          </Button>
+            <Sparkle className="size-4 text-indigo-400" />
+          </button>
         )}
-      </div>
-
-      <div className="flex items-center justify-between mb-3 mt-6">
-        <div className="flex items-center gap-4 text-zinc-400 font-medium">
-          <button onClick={() => {
-            if (setViewDate) {
-              setViewDate(addWeeks(viewDate, -1));
-              if (!['This Week', 'This Month', 'This Year', 'All Time'].includes(dateFilter)) {
-                setDateFilter('This Week');
-              }
-            }
-          }} className="hover:text-zinc-100 p-1.5 hover:bg-zinc-900 rounded-md transition-colors"><ChevronLeftIcon className="size-4" /></button>
-          <span className="text-sm font-sans tracking-tight w-32 text-center text-zinc-300 select-none">
-            Week of {format(weekStart, 'MMM d')}
-          </span>
-          <button onClick={() => {
-            if (setViewDate) {
-              setViewDate(addWeeks(viewDate, 1));
-              if (!['This Week', 'This Month', 'This Year', 'All Time'].includes(dateFilter)) {
-                setDateFilter('This Week');
-              }
-            }
-          }} className="hover:text-zinc-100 p-1.5 hover:bg-zinc-900 rounded-md transition-colors"><ChevronRightIcon className="size-4" /></button>
-        </div>
       </div>
 
       {/* Creation Console (Sleek Vercel-style input) */}
@@ -231,30 +314,18 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
               </SelectContent>
             </Select>
 
-            <Select value={selectedCategory} onValueChange={(val) => setSelectedCategory(val as TaskCategory)}>
-              <SelectTrigger className="h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-200 hover:bg-zinc-800 px-3 transition-colors shadow-xs">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Work">Work</SelectItem>
-                <SelectItem value="Personal">Personal</SelectItem>
-                <SelectItem value="Health">Health</SelectItem>
-                <SelectItem value="Learning">Learning</SelectItem>
-                <SelectItem value="Ideas">Ideas</SelectItem>
-              </SelectContent>
-            </Select>
+            <CategoryPicker
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              existingCategories={tasks.map(t => t.category)}
+              variant="button"
+            />
 
-            <Select value={selectedPriority} onValueChange={(val) => setSelectedPriority(val as Priority)}>
-              <SelectTrigger className="h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-200 hover:bg-zinc-800 px-3 transition-colors shadow-xs">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="medium">Med</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectContent>
-            </Select>
+            <PriorityPicker
+              value={selectedPriority}
+              onChange={setSelectedPriority}
+              variant="button"
+            />
 
             <div className="w-px h-4 bg-zinc-800 mx-0.5"></div>
 
@@ -466,23 +537,137 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
         </div>
 
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-          {/* Category Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-            <FilterIcon className="size-4 text-zinc-500 mr-1 shrink-0" />
-            {categories.map((cat) => (
+          {/* Searchable, Scrollable Category Filter Dropdown */}
+          <Popover open={isCategoryFilterOpen} onOpenChange={setIsCategoryFilterOpen}>
+            <PopoverTrigger asChild>
               <button
-                key={cat}
                 type="button"
-                onClick={() => setCategoryFilter(cat)}
                 className={cn(
-                  'h-8 px-3 rounded-lg text-sm font-medium transition-colors shrink-0',
-                  categoryFilter === cat ? 'bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                  "h-8 px-2.5 rounded-xl inline-flex items-center gap-1.5 text-xs font-medium transition-all select-none cursor-pointer border shadow-2xs",
+                  categoryFilter !== 'All'
+                    ? "bg-zinc-800 text-zinc-100 border-zinc-700 font-semibold"
+                    : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white"
                 )}
+                title="Filter by category"
               >
-                {cat}
+                <FilterIcon className="size-3.5 text-zinc-400" />
+                <span>{categoryFilter === 'All' ? 'All' : categoryFilter}</span>
+                {categoryFilter !== 'All' && (
+                  <span 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCategoryFilter('All');
+                    }}
+                    className="hover:bg-zinc-700/80 rounded-full p-0.5 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    title="Clear category filter"
+                  >
+                    <XIcon className="size-2.5" />
+                  </span>
+                )}
+                <ChevronDownIcon className={cn("size-3 text-zinc-500 transition-transform duration-200", isCategoryFilterOpen && "rotate-180")} />
               </button>
-            ))}
-          </div>
+            </PopoverTrigger>
+            <PopoverContent 
+              align="end" 
+              className="w-56 p-2 bg-zinc-950 border border-zinc-800 rounded-xl shadow-xl z-50 text-zinc-200 font-sans"
+            >
+              {/* Search input */}
+              <div className="relative mb-2">
+                <SearchIcon className="absolute left-2.5 top-2.5 size-3.5 text-zinc-500 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Search categories..."
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  className="h-8 pl-8 pr-7 text-xs bg-zinc-900/60 border-0 text-zinc-100 placeholder:text-zinc-500 rounded-lg focus-visible:ring-0 focus:outline-none shadow-none"
+                  autoFocus
+                />
+                {categorySearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setCategorySearchQuery('')}
+                    className="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                  >
+                    <XIcon className="size-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Scrollable Category List */}
+              <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                {/* Default Categories */}
+                {filteredDefaults.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 px-2 py-1 font-semibold">
+                      Default
+                    </div>
+                    {filteredDefaults.map((cat) => {
+                      const isSelected = categoryFilter === cat;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setCategoryFilter(cat);
+                            setIsCategoryFilterOpen(false);
+                            setCategorySearchQuery('');
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer select-none",
+                            isSelected
+                              ? "bg-zinc-800 text-white font-semibold"
+                              : "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                          )}
+                        >
+                          <span className="truncate">{cat === 'All' ? 'All' : cat}</span>
+                          {isSelected && <CheckIcon className="size-3.5 text-indigo-400 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Recent Custom Categories */}
+                {filteredCustom.length > 0 && (
+                  <div className="pt-1.5 border-t border-zinc-800/80 mt-1">
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 px-2 py-1 font-semibold">
+                      Recent Custom
+                    </div>
+                    {filteredCustom.map((cat) => {
+                      const isSelected = categoryFilter === cat;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setCategoryFilter(cat);
+                            setIsCategoryFilterOpen(false);
+                            setCategorySearchQuery('');
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer select-none",
+                            isSelected
+                              ? "bg-zinc-800 text-white font-semibold"
+                              : "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                          )}
+                        >
+                          <span className="truncate">{cat}</span>
+                          {isSelected && <CheckIcon className="size-3.5 text-indigo-400 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {filteredDefaults.length === 0 && filteredCustom.length === 0 && (
+                  <div className="py-4 text-center text-xs text-zinc-500 font-sans">
+                    No categories found
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Sort Selector */}
           <div className="flex items-center gap-2 shrink-0 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-xl text-sm shadow-xs">
@@ -573,7 +758,11 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                           {task.title}
                         </span>
                       )}
-                      {getPriorityBadge(task.priority)}
+                      <PriorityPicker
+                        value={task.priority || 'medium'}
+                        onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
+                        variant="badge"
+                      />
                       
                       {editingTaskId !== task.id && (
                         <button
@@ -604,9 +793,12 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                         {task.scheduledDay} {task.time || ''}
                       </span>
                     )}
-                    <Badge variant="outline" className="text-xs rounded-md bg-zinc-900 border-zinc-800 text-zinc-300 px-2.5 py-0.5 font-medium">
-                      {task.category}
-                    </Badge>
+                    <CategoryPicker
+                      value={task.category || 'General'}
+                      onChange={(newCat) => onUpdateTask(task.id, { category: newCat })}
+                      existingCategories={tasks.map(t => t.category)}
+                      variant="badge"
+                    />
                     
                     <button
                       type="button"
@@ -672,6 +864,26 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                         }}
                         compact={false}
                       />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-zinc-800/50">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-400 font-medium">Category:</span>
+                        <CategoryPicker
+                          value={task.category || 'General'}
+                          onChange={(newCat) => onUpdateTask(task.id, { category: newCat })}
+                          existingCategories={tasks.map(t => t.category)}
+                          variant="button"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-400 font-medium">Priority:</span>
+                        <PriorityPicker
+                          value={task.priority || 'medium'}
+                          onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
+                          variant="button"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
 export type TaskStatus = 'todo' | 'in_progress' | 'half_completed' | 'completed' | 'failed';
-export type TaskCategory = 'Work' | 'Personal' | 'Health' | 'Learning' | 'Ideas' | 'General';
+export type TaskCategory = 'Work' | 'Personal' | 'Health' | 'Learning' | 'Ideas' | 'General' | (string & {});
 export type WeekDay = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
 export interface Attachment {
@@ -80,4 +80,4 @@ export interface AiChatMessage {
   }>;
 }
 
-export type ActiveTab = 'timeline' | 'tasks' | 'diary' | 'weekly' | 'settings';
+export type ActiveTab = 'timeline' | 'tasks' | 'diary' | 'settings';

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
-import { Task, DiaryEntry, WeeklyGoal, WeekDay, Priority, TaskCategory, MoodType, AiChatMessage } from '../types';
+import { Task, DiaryEntry, WeekDay, Priority, TaskCategory, MoodType, AiChatMessage } from '../types';
 
 export interface AiToolExecutionResult {
   toolName: string;
@@ -14,8 +14,6 @@ export interface AppStateHandlers {
   deleteTask?: (taskQuery: string) => boolean;
   addDiary: (entry: Partial<DiaryEntry>) => DiaryEntry;
   deleteDiary?: (diaryQuery: string) => boolean;
-  addGoals: (goals: string[]) => void;
-  toggleGoal?: (goalQuery: string) => boolean;
 }
 
 // Function Declarations for Gemini Tool Calling
@@ -111,34 +109,6 @@ const deleteDiaryEntryDeclaration: FunctionDeclaration = {
   },
 };
 
-const planWeeklyGoalsDeclaration: FunctionDeclaration = {
-  name: 'plan_weekly_goals',
-  description: 'Add core high-level weekly goals to the weekly planner.',
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      goals: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: 'Array of high level goal descriptions for the week',
-      },
-    },
-    required: ['goals'],
-  },
-};
-
-const toggleWeeklyGoalDeclaration: FunctionDeclaration = {
-  name: 'toggle_weekly_goal',
-  description: 'Toggle completion status of a weekly objective/goal matching the query.',
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      goalQuery: { type: Type.STRING, description: 'Title or keyword of the weekly goal to toggle' },
-    },
-    required: ['goalQuery'],
-  },
-};
-
 export class GeminiService {
   private apiKey: string;
   private modelName: string;
@@ -152,7 +122,6 @@ export class GeminiService {
     userMessage: string,
     currentTasks: Task[],
     currentDiary: DiaryEntry[],
-    currentGoals: WeeklyGoal[],
     appStateHandlers: AppStateHandlers,
     chatHistory?: AiChatMessage[]
   ): Promise<{ responseText: string; executedTools: Array<{ name: string; description: string; details?: string }> }> {
@@ -171,10 +140,10 @@ export class GeminiService {
 
     const contextPrompt = `
 You are MindAssistant, an intelligent personal productivity AI Copilot embedded inside the MindFlow personal desktop application.
-The user relies on you to help manage their Diary/Journal, Tasks, and Weekly Schedule.
+The user relies on you to help manage their Diary/Journal and Tasks.
 
 You have direct capability to execute ACTIONS on the app using your provided function tools!
-Whenever the user asks you to create a task, complete/delete a task, record a note/diary, delete a diary, or plan/toggle weekly goals, YOU MUST CALL THE APPROPRIATE TOOL(S).
+Whenever the user asks you to create a task, complete/delete a task, record a note/diary, or delete a diary, YOU MUST CALL THE APPROPRIATE TOOL(S).
 
 Current App State Context:
 - Active Tasks (${currentTasks.length}):
@@ -182,9 +151,6 @@ ${currentTasks.length > 0 ? currentTasks.map((t) => `  * [ID: ${t.id}] "${t.titl
 
 - Recent Diary Entries (${currentDiary.length}):
 ${currentDiary.length > 0 ? currentDiary.slice(0, 5).map((d) => `  * [ID: ${d.id} | Date: ${d.date}] "${d.title}" (Mood: ${d.mood})`).join('\n') : '  (No diary entries)'}
-
-- Weekly Goals (${currentGoals.length}):
-${currentGoals.length > 0 ? currentGoals.map((g) => `  * [ID: ${g.id} | ${g.completed ? 'Done' : 'Pending'}] "${g.title}"`).join('\n') : '  (No goals)'}
 
 Recent Chat Context:
 ${recentHistoryText}
@@ -211,8 +177,6 @@ Instructions:
               deleteTaskDeclaration,
               createDiaryEntryDeclaration,
               deleteDiaryEntryDeclaration,
-              planWeeklyGoalsDeclaration,
-              toggleWeeklyGoalDeclaration,
             ]
           }]
         }
@@ -271,22 +235,6 @@ Instructions:
               name: 'delete_diary_entry',
               description: `Deleted diary entry matching "${args.diaryQuery}"`,
               details: success ? 'Diary entry deleted.' : 'No matching entry found.',
-            });
-          } else if (call.name === 'plan_weekly_goals') {
-            if (Array.isArray(args.goals)) {
-              appStateHandlers.addGoals(args.goals);
-              executedTools.push({
-                name: 'plan_weekly_goals',
-                description: `Added ${args.goals.length} new weekly goal(s)`,
-                details: args.goals.join(' • '),
-              });
-            }
-          } else if (call.name === 'toggle_weekly_goal') {
-            const success = appStateHandlers.toggleGoal ? appStateHandlers.toggleGoal(args.goalQuery) : false;
-            executedTools.push({
-              name: 'toggle_weekly_goal',
-              description: `Toggled completion for goal matching "${args.goalQuery}"`,
-              details: success ? 'Goal state updated.' : 'Goal not found.',
             });
           }
         }

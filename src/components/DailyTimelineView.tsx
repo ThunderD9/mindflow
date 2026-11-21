@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   ClockIcon, 
   PlusIcon, 
-  SparklesIcon, 
+  Sparkle, 
   CheckCircle2Icon, 
   CircleIcon, 
   Trash2Icon,
@@ -14,16 +14,21 @@ import {
   XIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  MinusCircleIcon
+  MinusCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from 'lucide-react';
 import { format, addDays, isToday, startOfWeek, isSameDay } from 'date-fns';
-import { Task, WeekDay } from '../types';
+import { Task, WeekDay, TaskCategory, Priority } from '../types';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Calendar } from './ui/calendar';
 import { MediaAttachments } from './MediaAttachments';
 import { TimePicker } from './TimePicker';
+import { CategoryPicker, PriorityPicker } from './TaskPropertyPickers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, getEffectiveDate } from '@/lib/utils';
 
@@ -61,8 +66,11 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
   const [creatingForHour, setCreatingForHour] = useState<number | null>(null);
   const [customTimeInput, setCustomTimeInput] = useState<string>('');
   const [newTitle, setNewTitle] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'Work' | 'Personal' | 'Health' | 'Learning' | 'Ideas' | 'General'>('Work');
+  const [selectedCategory, setSelectedCategory] = useState<TaskCategory>('Work');
+  const [selectedPriority, setSelectedPriority] = useState<Priority>('medium');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [expandedTitleIds, setExpandedTitleIds] = useState<Set<string>>(new Set());
+  const [priorityCollapseOverrides, setPriorityCollapseOverrides] = useState<Record<string, boolean>>({});
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTitleBuffer, setEditTitleBuffer] = useState('');
@@ -70,6 +78,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
 
   const currentHour = new Date().getHours();
   const isViewingToday = isToday(viewDate);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const displayedHours = showFull24Hours ? HOURS_24 : HOURS_24.filter(h => h.isWorkingHour);
   const dayTasks = tasks.filter(t => getEffectiveDate(t) === selectedDateStr);
@@ -108,7 +117,7 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
       title: newTitle.trim(),
       description: '',
       category: selectedCategory,
-      priority: 'medium',
+      priority: selectedPriority,
       status: 'todo',
       scheduledDay: selectedDay,
       date: selectedDateStr,
@@ -130,13 +139,47 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
             <ClockIcon className="size-6 text-zinc-300" aria-hidden="true" />
             <span>Daily Timeline</span>
             <div className="flex items-center ml-3 gap-1">
-              <button onClick={() => setViewDate(addDays(viewDate, -1))} className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors">
+              <button 
+                type="button"
+                onClick={() => setViewDate(addDays(viewDate, -1))} 
+                className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                title="Previous day"
+              >
                 <ChevronLeftIcon className="size-3.5" />
               </button>
-              <span className="text-xs font-medium font-sans text-zinc-400 min-w-[80px] text-center select-none">
-                {isViewingToday ? 'Today' : format(viewDate, 'MMM d')}
-              </span>
-              <button onClick={() => setViewDate(addDays(viewDate, 1))} className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors">
+
+              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-xs font-medium font-sans text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 px-2 py-1 rounded-md min-w-[70px] text-center select-none transition-colors cursor-pointer"
+                    title="Click to select a day from calendar"
+                  >
+                    {isViewingToday ? 'Today' : format(viewDate, 'MMM d')}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 border-zinc-700 bg-zinc-900 rounded-xl shadow-xl z-50" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={viewDate}
+                    onSelect={(day) => {
+                      if (day) {
+                        setViewDate(day);
+                        setIsCalendarOpen(false);
+                      }
+                    }}
+                    captionLayout="dropdown"
+                    className="text-zinc-100 bg-zinc-900 rounded-xl"
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <button 
+                type="button"
+                onClick={() => setViewDate(addDays(viewDate, 1))} 
+                className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                title="Next day"
+              >
                 <ChevronRightIcon className="size-3.5" />
               </button>
             </div>
@@ -152,25 +195,24 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setShowFull24Hours(!showFull24Hours)}
-            className="h-10 px-3.5 text-sm font-medium gap-2 rounded-xl bg-zinc-900 border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-100 transition-all"
+            className="h-10 px-3.5 text-sm font-medium gap-2 rounded-xl bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-700 hover:text-white hover:shadow-md active:scale-95 transition-all duration-200 cursor-pointer shadow-2xs select-none"
           >
-            {showFull24Hours ? <SunIcon className="size-4 text-zinc-400" /> : <MoonIcon className="size-4 text-zinc-400" />}
-            <span>{showFull24Hours ? '6 AM – 11 PM' : '24h View'}</span>
+            {showFull24Hours ? <SunIcon className="size-4 text-amber-400 transition-colors" /> : <MoonIcon className="size-4 text-indigo-400 transition-colors" />}
+            <span>{showFull24Hours ? '6 AM – 11 PM' : '24h'}</span>
           </Button>
 
           {onOpenAiWithPrompt && (
-            <Button
+            <button
               type="button"
-              size="sm"
               onClick={() => {
                 const summary = dayTasks.map(t => `${t.time || '09:00 AM'}: ${t.title}`).join('\n');
                 onOpenAiWithPrompt(`As my Startup Founder AI Copilot, evaluate my schedule for ${selectedDay}. Identify context-switching waste or fragmented time blocks:\n\n${summary}`);
               }}
-              className="h-10 px-4 bg-zinc-100 text-zinc-950 hover:bg-zinc-200 font-semibold text-sm rounded-xl inline-flex items-center gap-2 shadow-xs transition-all duration-200"
+              title="AI Optimize Schedule"
+              className="glass-pill size-10 rounded-xl flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer shadow-sm active:scale-95"
             >
-              <SparklesIcon className="size-4 text-zinc-950" />
-              <span>AI Optimize Schedule</span>
-            </Button>
+              <Sparkle className="size-4 text-indigo-400" />
+            </button>
           )}
         </div>
       </div>
@@ -334,13 +376,29 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2.5 pt-1">
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setCreatingForHour(null)} className="h-8 px-3 text-xs font-medium text-zinc-400 hover:text-zinc-200 rounded-lg">
-                        Cancel
-                      </Button>
-                      <Button type="submit" size="sm" disabled={!newTitle.trim()} className="h-8 px-4 text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 rounded-lg shadow-xs">
-                        Add to Timeline
-                      </Button>
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-900">
+                      <div className="flex items-center gap-2">
+                        <CategoryPicker
+                          value={selectedCategory}
+                          onChange={setSelectedCategory}
+                          existingCategories={tasks.map(t => t.category)}
+                          variant="button"
+                        />
+                        <PriorityPicker
+                          value={selectedPriority}
+                          onChange={setSelectedPriority}
+                          variant="button"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setCreatingForHour(null)} className="h-8 px-3 text-xs font-medium text-zinc-400 hover:text-zinc-200 rounded-lg">
+                          Cancel
+                        </Button>
+                        <Button type="submit" size="sm" disabled={!newTitle.trim()} className="h-8 px-4 text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 rounded-lg shadow-xs">
+                          Add to Timeline
+                        </Button>
+                      </div>
                     </div>
                   </form>
                 )}
@@ -351,6 +409,19 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                   const isFailed = task.status === 'failed';
                   const isHalfCompleted = task.status === 'half_completed';
                   const isExpanded = expandedTaskId === task.id;
+                  const isExpandedTitle = expandedTitleIds.has(task.id);
+                  const isWayOverboard = task.title.length > 85;
+
+                  const isCollapsedPriority = priorityCollapseOverrides[task.id] !== undefined
+                    ? priorityCollapseOverrides[task.id]
+                    : (task.title.length > 30);
+
+                  const togglePriorityCollapse = () => {
+                    setPriorityCollapseOverrides(prev => ({
+                      ...prev,
+                      [task.id]: !isCollapsedPriority
+                    }));
+                  };
 
                   return (
                     <Card 
@@ -364,121 +435,326 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                         isCompleted ? 'border-zinc-900 opacity-60' : isFailed ? 'border-rose-900/50 opacity-60' : isHalfCompleted ? 'border-yellow-900/50' : 'border-zinc-800 hover:border-zinc-700'
                       )}
                     >
-                      <div onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="flex items-center justify-between gap-3.5 cursor-pointer select-none">
-                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onUpdateTask(task.id, { status: isCompleted ? 'todo' : 'completed' });
-                            }}
-                            className="shrink-0 text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none"
-                          >
-                            {isCompleted ? <CheckCircle2Icon className="size-5 text-emerald-500" /> : isFailed ? <XCircleIcon className="size-5 text-rose-500" /> : isHalfCompleted ? <MinusCircleIcon className="size-5 text-yellow-500" /> : <CircleIcon className="size-5 text-zinc-500 hover:text-zinc-300" />}
-                          </button>
+                      <div 
+                        onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} 
+                        className="cursor-pointer select-none"
+                      >
+                        {isWayOverboard ? (
+                          /* Big things (2 lines): Line 1 has Title + Chevron, Edit, and Action Buttons. Line 2 has Time + Priority + Category */
+                          <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                            {/* Line 1: Left Title, Right Chevron + Edit + Action buttons ALWAYS IN FIRST LINE */}
+                            <div className="flex items-start justify-between gap-3 min-w-0 w-full">
+                              <div className="flex items-start gap-3 min-w-0 flex-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdateTask(task.id, { status: isCompleted ? 'todo' : 'completed' });
+                                  }}
+                                  className="shrink-0 text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none mt-0.5"
+                                >
+                                  {isCompleted ? (
+                                    <CheckCircle2Icon className="size-5 text-emerald-500" />
+                                  ) : isFailed ? (
+                                    <XCircleIcon className="size-5 text-rose-500" />
+                                  ) : isHalfCompleted ? (
+                                    <MinusCircleIcon className="size-5 text-yellow-500" />
+                                  ) : (
+                                    <CircleIcon className="size-5 text-zinc-500 hover:text-zinc-300" />
+                                  )}
+                                </button>
 
-                          <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap" onClick={(e) => {
-                            if (editingTaskId === task.id) e.stopPropagation();
-                          }}>
-                            {editingTaskId === task.id ? (
-                              <input
-                                autoFocus
-                                draggable={true}
-                                onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                value={editTitleBuffer}
-                                onChange={(e) => setEditTitleBuffer(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    onUpdateTask(task.id, { title: editTitleBuffer });
-                                    setEditingTaskId(null);
-                                  }
-                                  if (e.key === 'Escape') {
-                                    setEditingTaskId(null);
-                                  }
-                                }}
-                                onBlur={() => {
-                                  onUpdateTask(task.id, { title: editTitleBuffer });
-                                  setEditingTaskId(null);
-                                }}
-                                className="h-8 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                                <div 
+                                  className="min-w-0 flex-1" 
+                                  onClick={(e) => {
+                                    if (editingTaskId === task.id) e.stopPropagation();
+                                  }}
+                                >
+                                  {editingTaskId === task.id ? (
+                                    <input
+                                      autoFocus
+                                      draggable={true}
+                                      onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                      value={editTitleBuffer}
+                                      onChange={(e) => setEditTitleBuffer(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          onUpdateTask(task.id, { title: editTitleBuffer });
+                                          setEditingTaskId(null);
+                                        }
+                                        if (e.key === 'Escape') {
+                                          setEditingTaskId(null);
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        onUpdateTask(task.id, { title: editTitleBuffer });
+                                        setEditingTaskId(null);
+                                      }}
+                                      className="h-7 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                                    />
+                                  ) : (
+                                    <span className={cn(
+                                      'text-sm font-semibold tracking-tight leading-5 block',
+                                      isExpandedTitle ? 'break-words' : 'truncate',
+                                      isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100'
+                                    )}>
+                                      {task.title}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Right side: Chevron + Edit + Action buttons ALWAYS on first line */}
+                              <div className="flex items-center gap-1 shrink-0 self-start">
+                                {editingTaskId !== task.id && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      title={isExpandedTitle ? "Show less" : "See all of the text"}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedTitleIds(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(task.id)) next.delete(task.id);
+                                          else next.add(task.id);
+                                          return next;
+                                        });
+                                      }}
+                                      className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors cursor-pointer"
+                                    >
+                                      {isExpandedTitle ? (
+                                        <ChevronUpIcon className="size-4 text-indigo-400" />
+                                      ) : (
+                                        <ChevronDownIcon className="size-4" />
+                                      )}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      title="Edit task title"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditTitleBuffer(task.title);
+                                        setEditingTaskId(task.id);
+                                      }}
+                                      className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors cursor-pointer"
+                                    >
+                                      <Edit2Icon className="size-4" />
+                                    </button>
+                                  </>
+                                )}
+
+                                <button
+                                  type="button"
+                                  title="Mark as half completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
+                                  }}
+                                  className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400 hover:bg-zinc-900")}
+                                >
+                                  <MinusCircleIcon className="size-4" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  title="Mark as not completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
+                                  }}
+                                  className={cn("p-1 rounded-md transition-colors", isFailed ? "text-rose-500 hover:text-rose-400" : "text-zinc-500 hover:text-rose-400 hover:bg-zinc-900")}
+                                >
+                                  <XIcon className="size-4" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  title="Delete task"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteTask(task.id);
+                                  }}
+                                  className="text-zinc-500 hover:text-rose-400 p-1 hover:bg-zinc-900 rounded-md transition-colors"
+                                >
+                                  <Trash2Icon className="size-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Line 2: Time badge + Attachments + Priority badge + Category badge */}
+                            <div className="flex items-center gap-2 pl-8 flex-wrap">
+                              {task.time && (
+                                <Badge variant="outline" className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-zinc-900 border-zinc-800 text-indigo-300 shrink-0">
+                                  {task.time}
+                                </Badge>
+                              )}
+
+                              {task.attachments && task.attachments.length > 0 && (
+                                <Badge variant="outline" className="text-xs font-mono rounded-md bg-zinc-900 border-zinc-800 text-zinc-400 gap-1 px-1.5 py-0.5 shrink-0">
+                                  <PaperclipIcon className="size-3 text-zinc-400" />
+                                  <span>{task.attachments.length}</span>
+                                </Badge>
+                              )}
+
+                              <PriorityPicker
+                                value={task.priority || 'medium'}
+                                onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
+                                variant="badge"
+                                collapseDot={isCollapsedPriority}
+                                onToggleCollapse={togglePriorityCollapse}
                               />
-                            ) : (
-                              <span className={cn('text-sm font-semibold truncate tracking-tight', isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100')}>
-                                {task.title}
-                              </span>
-                            )}
 
-                            {task.time && (
-                              <Badge variant="outline" className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-zinc-900 border-zinc-800 text-indigo-300">
-                                {task.time}
-                              </Badge>
-                            )}
-                            
-                            {editingTaskId !== task.id && (
+                              <CategoryPicker
+                                value={task.category || 'General'}
+                                onChange={(newCat) => onUpdateTask(task.id, { category: newCat })}
+                                existingCategories={tasks.map(t => t.category)}
+                                variant="badge"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          /* Single Line Task: Not overflowing */
+                          <div className="flex items-center justify-between gap-3 min-w-0 flex-1">
+                            {/* Left: Radio + Title + Time + Attachments + Edit Icon (at the end of the text!) */}
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
                               <button
                                 type="button"
-                                title="Edit task title"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setEditTitleBuffer(task.title);
-                                  setEditingTaskId(task.id);
+                                  onUpdateTask(task.id, { status: isCompleted ? 'todo' : 'completed' });
                                 }}
-                                className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md transition-colors ml-1"
+                                className="shrink-0 text-zinc-500 hover:text-zinc-200 transition-colors focus:outline-none"
                               >
-                                <Edit2Icon className="size-3.5" />
+                                {isCompleted ? (
+                                  <CheckCircle2Icon className="size-5 text-emerald-500" />
+                                ) : isFailed ? (
+                                  <XCircleIcon className="size-5 text-rose-500" />
+                                ) : isHalfCompleted ? (
+                                  <MinusCircleIcon className="size-5 text-yellow-500" />
+                                ) : (
+                                  <CircleIcon className="size-5 text-zinc-500 hover:text-zinc-300" />
+                                )}
                               </button>
-                            )}
+
+                              <div 
+                                className="min-w-0 flex items-center gap-2"
+                                onClick={(e) => {
+                                  if (editingTaskId === task.id) e.stopPropagation();
+                                }}
+                              >
+                                {editingTaskId === task.id ? (
+                                  <input
+                                    autoFocus
+                                    draggable={true}
+                                    onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    value={editTitleBuffer}
+                                    onChange={(e) => setEditTitleBuffer(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        onUpdateTask(task.id, { title: editTitleBuffer });
+                                        setEditingTaskId(null);
+                                      }
+                                      if (e.key === 'Escape') {
+                                        setEditingTaskId(null);
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      onUpdateTask(task.id, { title: editTitleBuffer });
+                                      setEditingTaskId(null);
+                                    }}
+                                    className="h-7 w-full px-2 text-sm font-semibold rounded-md bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                                  />
+                                ) : (
+                                  <span className={cn(
+                                    'text-sm font-semibold tracking-tight leading-5 shrink min-w-0 truncate',
+                                    isCompleted ? 'line-through text-zinc-500 font-normal' : isFailed ? 'line-through text-rose-500/70 font-normal' : isHalfCompleted ? 'text-yellow-100/90' : 'text-zinc-100'
+                                  )}>
+                                    {task.title}
+                                  </span>
+                                )}
+
+                                {/* Time badge immediately following the text */}
+                                {task.time && (
+                                  <Badge variant="outline" className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-zinc-900 border-zinc-800 text-indigo-300 shrink-0">
+                                    {task.time}
+                                  </Badge>
+                                )}
+
+                                {/* Attachments badge */}
+                                {task.attachments && task.attachments.length > 0 && (
+                                  <Badge variant="outline" className="text-xs font-mono rounded-md bg-zinc-900 border-zinc-800 text-zinc-400 gap-1 px-1.5 py-0.5 shrink-0">
+                                    <PaperclipIcon className="size-3 text-zinc-400" />
+                                    <span>{task.attachments.length}</span>
+                                  </Badge>
+                                )}
+
+                                {/* Edit button AT THE END OF THE TEXT */}
+                                {editingTaskId !== task.id && (
+                                  <button
+                                    type="button"
+                                    title="Edit task title"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditTitleBuffer(task.title);
+                                      setEditingTaskId(task.id);
+                                    }}
+                                    className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors shrink-0 cursor-pointer"
+                                  >
+                                    <Edit2Icon className="size-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right: Priority Dot on single line + Action buttons */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <PriorityPicker
+                                value={task.priority || 'medium'}
+                                onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
+                                variant="badge"
+                                collapseDot={true}
+                                onToggleCollapse={togglePriorityCollapse}
+                              />
+
+                              <button
+                                type="button"
+                                title="Mark as half completed"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
+                                }}
+                                className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400 hover:bg-zinc-900")}
+                              >
+                                <MinusCircleIcon className="size-4" />
+                              </button>
+
+                              <button
+                                type="button"
+                                title="Mark as not completed"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
+                                }}
+                                className={cn("p-1 rounded-md transition-colors", isFailed ? "text-rose-500 hover:text-rose-400" : "text-zinc-500 hover:text-rose-400 hover:bg-zinc-900")}
+                              >
+                                <XIcon className="size-4" />
+                              </button>
+
+                              <button
+                                type="button"
+                                title="Delete task"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteTask(task.id);
+                                }}
+                                className="text-zinc-500 hover:text-rose-400 p-1 hover:bg-zinc-900 rounded-md transition-colors"
+                              >
+                                <Trash2Icon className="size-4" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="flex items-center gap-2.5 shrink-0">
-                          {task.attachments && task.attachments.length > 0 && (
-                            <Badge variant="outline" className="text-xs font-mono rounded-md bg-zinc-900 border-zinc-800 text-zinc-400 gap-1 px-2 py-0.5">
-                              <PaperclipIcon className="size-3 text-zinc-400" />
-                              <span>{task.attachments.length}</span>
-                            </Badge>
-                          )}
-
-                          <Badge variant="outline" className="text-xs font-sans font-medium rounded-md bg-zinc-900 border-zinc-800 text-zinc-300 px-2.5 py-0.5">
-                            {task.category}
-                          </Badge>
-
-                          <button
-                            type="button"
-                            title="Mark as half completed"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onUpdateTask(task.id, { status: isHalfCompleted ? 'todo' : 'half_completed' });
-                            }}
-                            className={cn("p-1 rounded-md transition-colors", isHalfCompleted ? "text-yellow-500 hover:text-yellow-400" : "text-zinc-500 hover:text-yellow-400")}
-                          >
-                            <MinusCircleIcon className="size-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            title="Mark as not completed"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onUpdateTask(task.id, { status: isFailed ? 'todo' : 'failed' });
-                            }}
-                            className={cn("p-1 rounded-md transition-colors", isFailed ? "text-rose-500 hover:text-rose-400" : "text-zinc-500 hover:text-rose-400")}
-                          >
-                            <XIcon className="size-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            title="Delete task"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDeleteTask(task.id);
-                            }}
-                            className="text-zinc-500 hover:text-rose-400 p-1 rounded-md transition-colors"
-                          >
-                            <Trash2Icon className="size-4" />
-                          </button>
-                        </div>
+                        )}
                       </div>
 
                       {/* Expanded Details */}
@@ -497,12 +773,26 @@ export const DailyTimelineView: React.FC<DailyTimelineViewProps> = ({
                             />
                           </div>
 
-                          <div className="flex items-center justify-between pt-1 border-t border-zinc-800/50">
+                          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-zinc-800/50">
                             <div className="flex items-center gap-2.5">
                               <span className="text-xs text-zinc-400 font-medium">Edit Slice Time:</span>
                               <TimePicker
                                 value={task.time || hourObj.label}
                                 onChange={(newTime) => onUpdateTask(task.id, { time: newTime })}
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <CategoryPicker
+                                value={task.category || 'General'}
+                                onChange={(newCat) => onUpdateTask(task.id, { category: newCat })}
+                                existingCategories={tasks.map(t => t.category)}
+                                variant="button"
+                              />
+                              <PriorityPicker
+                                value={task.priority || 'medium'}
+                                onChange={(newPri) => onUpdateTask(task.id, { priority: newPri })}
+                                variant="button"
                               />
                             </div>
                           </div>
